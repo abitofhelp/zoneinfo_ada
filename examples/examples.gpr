@@ -1,0 +1,43 @@
+-- ===========================================================================
+-- Examples.gpr - ZoneInfo Example Programs
+-- ===========================================================================
+-- Copyright (c) 2025 Michael Gardner, A Bit of Help, Inc.
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Purpose:
+--   Example programs demonstrating ZoneInfo library usage.
+--   Shows hexagonal architecture in action.
+-- ===========================================================================
+
+with "../config/zoneinfo_config.gpr";
+with "../zoneinfo.gpr";
+
+project Examples is
+
+   for Source_Dirs use (".");
+   for Object_Dir use "../obj/examples";
+   for Exec_Dir use "../bin/examples";
+
+   for Main use
+     ("get_offset.adb",
+      "comprehensive_test.adb",
+      "timezone_info.adb",
+      "search_timezones.adb",
+      "time_arithmetic.adb",
+      "duration_calculations.adb",
+      "timezone_conversion.adb",
+      "dst_disambiguation.adb");
+
+   package Compiler is
+      for Default_Switches ("Ada") use ZoneInfo_Config.Ada_Compiler_Switches;
+   end Compiler;
+
+   package Binder is
+      for Switches ("Ada") use ("-Es");  -- Symbolic traceback
+   end Binder;
+
+   package Builder is
+      for Switches ("Ada") use ("-g");  -- Debug symbols
+   end Builder;
+
+end Examples;

@@ -1,0 +1,34 @@
+-- ===========================================================================
+-- Infrastructure.gpr - Infrastructure Layer Library
+-- ===========================================================================
+-- Copyright (c) 2025 Michael Gardner, A Bit of Help, Inc.
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Purpose:
+--   Infrastructure layer library containing concrete adapters that implement
+--   application output ports (console writer, file I/O, etc.).
+--
+-- Dependencies: Domain, Application layers
+-- Publishable: NO - Application-specific adapters
+-- ===========================================================================
+
+with "../../shared_config.gpr";
+with "../domain/domain.gpr";
+with "../application/application.gpr";
+with "functional.gpr";
+with "gnatcoll";  --  For JSON serialization
+
+library project Infrastructure is
+
+   for Library_Name use "infrastructure";
+   for Library_Kind use "static";
+
+   for Source_Dirs use (".", "adapter", "adapter/file_system", "cache", "paths", "platform", "platform/posix", "platform/windows");
+   for Object_Dir use "../../obj/infrastructure";
+   for Library_Dir use "../../lib/infrastructure";
+
+   package Compiler renames Shared_Config.Compiler;
+   package Binder renames Shared_Config.Binder;
+   package Builder renames Shared_Config.Builder;
+
+end Infrastructure;

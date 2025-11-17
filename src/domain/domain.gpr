@@ -1,0 +1,80 @@
+-- ===========================================================================
+-- Domain.gpr - Domain Layer Library
+-- ===========================================================================
+-- Copyright (c) 2025 Michael Gardner, A Bit of Help, Inc.
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Purpose:
+--   Domain layer library containing pure business logic, value objects,
+--   and domain primitives (Result monad, error types, etc.).
+--   This is the INNERMOST layer with ZERO dependencies on other layers.
+--
+-- Publishable: YES - This is a reusable library
+-- ===========================================================================
+
+with "../../shared_config.gpr";
+
+library project Domain is
+
+   for Library_Name use "domain";
+   for Library_Kind use "static";
+
+   --  =======================================================================
+   --  Profile Selection (via ZoneInfo.Config package)
+   --  =======================================================================
+   --  Each profile provides a ZoneInfo.Config package with profile-specific
+   --  constants (buffer sizes, capacity limits, etc.).
+   --
+   --  Usage:
+   --    alr build                                    # Default (standard)
+   --    alr build -- -XZONEINFO_PROFILE=embedded
+   --    alr build -- -XZONEINFO_PROFILE=concurrent
+   --    alr build -- -XZONEINFO_PROFILE=baremetal
+   --  =======================================================================
+
+   type Profile_Type is
+     ("standard",           -- Desktop/server (1+ GB RAM)
+      "embedded",           -- Ravenscar embedded (512KB+ RAM)
+      "concurrent",         -- Multi-threaded (1+ GB RAM)
+      "baremetal",          -- Zero footprint (128KB+ RAM)
+      "stm32h7s78",         -- STM32H7S78-DK (620KB + 32MB PSRAM)
+      "stm32mp135_linux");  -- STM32MP135F-DK Linux (512 MB)
+
+   Profile : Profile_Type := external ("ZONEINFO_PROFILE", "standard");
+
+   --  =======================================================================
+   --  Source Directories (Profile-Dependent)
+   --  =======================================================================
+   --  Include the selected configuration profile directory in source path.
+   --  Only ONE ZoneInfo.Config package will be visible to the compiler.
+   --  =======================================================================
+
+   case Profile is
+      when "standard" =>
+         for Source_Dirs use (".", "entity", "value_object", "error", "service",
+                              "../../config/profiles/standard");
+      when "embedded" =>
+         for Source_Dirs use (".", "entity", "value_object", "error", "service",
+                              "../../config/profiles/embedded");
+      when "concurrent" =>
+         for Source_Dirs use (".", "entity", "value_object", "error", "service",
+                              "../../config/profiles/concurrent");
+      when "baremetal" =>
+         for Source_Dirs use (".", "entity", "value_object", "error", "service",
+                              "../../config/profiles/baremetal");
+      when "stm32h7s78" =>
+         for Source_Dirs use (".", "entity", "value_object", "error", "service",
+                              "../../config/profiles/stm32h7s78");
+      when "stm32mp135_linux" =>
+         for Source_Dirs use (".", "entity", "value_object", "error", "service",
+                              "../../config/profiles/stm32mp135_linux");
+   end case;
+
+   for Object_Dir use "../../obj/domain";
+   for Library_Dir use "../../lib/domain";
+
+   package Compiler renames Shared_Config.Compiler;
+   package Binder renames Shared_Config.Binder;
+   package Builder renames Shared_Config.Builder;
+
+end Domain;
