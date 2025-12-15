@@ -52,14 +52,12 @@ library project Application is
    for Library_Interface use
      ("Application",
       "Application.Command",
-      "Application.Command.Greet",
       "Application.Error",
       "Application.Port",
       "Application.Port.Inbound",
       "Application.Port.Outbound",
       "Application.Port.Outbound.Writer",
-      "Application.Usecase",
-      "Application.Usecase.Greet");
+      "Application.Usecase");
 
    package Compiler renames Zoneinfo_Shared_Config.Compiler;
    package Binder renames Zoneinfo_Shared_Config.Binder;

@@ -20,7 +20,6 @@ pragma Ada_2022;
 --    API layer sends commands, application executes them.
 --
 --  See Also:
---    Application.Command.Greet - Example command DTO
 --    Application.Usecase - Use cases that process commands
 --  =========================================================================
 

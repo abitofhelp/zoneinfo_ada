@@ -43,8 +43,7 @@ library project Domain is
       "Domain.Error",
       "Domain.Error.Result",
       "Domain.Value_Object",
-      "Domain.Value_Object.Option",
-      "Domain.Value_Object.Person");
+      "Domain.Value_Object.Option");
 
    package Compiler renames Zoneinfo_Shared_Config.Compiler;
    package Binder renames Zoneinfo_Shared_Config.Binder;

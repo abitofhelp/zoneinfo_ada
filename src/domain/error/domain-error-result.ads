@@ -241,21 +241,21 @@ is
    --
    --  Example Usage:
    --    -- Given:
-   --    --   Person_Result : package is new Generic_Result (T => Person);
-   --    --   Unit_Result   : package is new Generic_Result (T => Unit);
-   --    --   function Write_Greeting (P : Person) return Unit_Result.Result;
+   --    --   Instant_Result : package is new Generic_Result (T => Instant);
+   --    --   Civil_Result   : package is new Generic_Result (T => Civil);
+   --    --   function To_Civil (I : Instant) return Civil_Result.Result;
    --    --
-   --    -- Chain Person creation to greeting output:
-   --    function Chain_To_Unit is new And_Then_Into
-   --      (T             => Person,
-   --       U             => Unit,
-   --       Source_Result => Person_Result,
-   --       Target_Result => Unit_Result,
-   --       F             => Write_Greeting);
+   --    -- Chain Instant creation to Civil conversion:
+   --    function Chain_To_Civil is new And_Then_Into
+   --      (T             => Instant,
+   --       U             => Civil,
+   --       Source_Result => Instant_Result,
+   --       Target_Result => Civil_Result,
+   --       F             => To_Civil);
    --    --
    --    -- Usage:
-   --    Final_Result : Unit_Result.Result :=
-   --      Chain_To_Unit (Person.Create (Name));
+   --    Final_Result : Civil_Result.Result :=
+   --      Chain_To_Civil (Now);
    --
    --  Design Pattern:
    --    This is the monadic bind (>>=) operation that allows crossing type

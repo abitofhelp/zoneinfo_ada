@@ -1,33 +1,32 @@
 pragma Ada_2022;
 --  ===========================================================================
---  Zoneinfo - Greeter Library Root Package
+--  Zoneinfo - Timezone Library Root Package
 --  ===========================================================================
 --  Copyright (c) 2025 Michael Gardner, A Bit of Help, Inc.
 --  SPDX-License-Identifier: BSD-3-Clause
 --
 --  Purpose:
---    Root package for the Zoneinfo library. This library demonstrates
---    hexagonal architecture, functional error handling, and dependency
---    injection in Ada 2022.
+--    Root package for the Zoneinfo library. Provides high-level timezone-aware
+--    datetime and duration operations for Ada 2022. Built on TZif for IANA
+--    timezone database access.
 --
 --  Quick Start:
 --    with Zoneinfo.API;
 --
 --    procedure Main is
 --       use Zoneinfo.API;
---       Cmd : constant Greet_Command := Create_Greet_Command ("World");
---       Res : constant Unit_Result.Result := Greet (Cmd);
+--       Now_Result : constant Instant_Result.Result := Now;
 --    begin
---       if not Unit_Result.Is_Ok (Res) then
---          -- Handle error
+--       if Instant_Result.Is_Ok (Now_Result) then
+--          --  Use Instant_Result.Value (Now_Result)
 --       end if;
 --    end Main;
 --
 --  Architecture:
 --    This library follows hybrid DDD/Clean/Hexagonal architecture:
---    - Domain: Pure business logic (Person value object)
---    - Application: Use cases and ports (Greet use case)
---    - Infrastructure: Adapters (Console_Writer)
+--    - Domain: Pure business logic (Instant, Civil, Zoned, Duration)
+--    - Application: Use cases and ports (timezone operations)
+--    - Infrastructure: Adapters (TZif integration)
 --    - API: Public facade (Zoneinfo.API)
 --
 --  Public API:

@@ -17,8 +17,9 @@ PROJECT_NAME := zoneinfo
 .PHONY: all build build-dev build-opt build-release build-tests build-profiles check check-arch \
         clean clean-clutter clean-coverage clean-deep compress deps \
 		help prereqs rebuild refresh stats test test-all test-coverage test-framework \
-		test-integration test-unit test-python test-windows install-tools build-coverage-runtime \
-		submodule-init submodule-update submodule-status spark-check spark-prove
+		test-integration test-unit test-python test-windows test-examples install-tools build-coverage-runtime \
+		submodule-init submodule-update submodule-status spark-check spark-prove \
+		build-examples examples run-examples
 # FIX: ENABLE AFTER THE TARGETS CONVERT TO USING OUR ADAFMT TOOL, WHICH IS IN DEVELOPMENT.
 #       format format-all format-src format-tests
 
@@ -96,7 +97,7 @@ all: build
 
 help: ## Display this help message
 	@echo "$(CYAN)$(BOLD)╔══════════════════════════════════════════════════╗$(NC)"
-	@echo "$(CYAN)$(BOLD)║  Hybrid Lib - Ada 2022 Library                   ║$(NC)"
+	@echo "$(CYAN)$(BOLD)║  Zoneinfo - Timezone Library for Ada 2022        ║$(NC)"
 	@echo "$(CYAN)$(BOLD)╚══════════════════════════════════════════════════╝$(NC)"
 	@echo " "
 	@echo "$(YELLOW)Build Commands:$(NC)"
@@ -119,8 +120,14 @@ help: ## Display this help message
 	@echo "  test-all           - Run all test executables"
 	@echo "  test-framework     - Run all test suites (unit + integration)"
 	@echo "  test-python        - Run Python script tests (arch_guard.py validation)"
+	@echo "  test-examples      - Run Ada-based tests for all examples"
 	@echo "  test-coverage      - Run tests with coverage analysis"
 	@echo "  test-windows       - Trigger Windows CI validation on GitHub"
+	@echo ""
+	@echo "$(YELLOW)Examples Commands:$(NC)"
+	@echo "  build-examples     - Build all example programs"
+	@echo "  examples           - Alias for build-examples"
+	@echo "  run-examples       - Build and run all example programs"
 	@echo ""
 	@echo "$(YELLOW)Quality & Architecture Commands:$(NC)"
 	@echo "  check              - Run static analysis"
@@ -442,6 +449,51 @@ test-windows: ## Trigger Windows CI validation on GitHub Actions
 			(echo "$(RED)$(BOLD)✗ Windows validation failed$(NC)" && exit 1); \
 	else \
 		echo "$(RED)✗ Could not find workflow run$(NC)"; \
+		exit 1; \
+	fi
+
+# =============================================================================
+# Examples Commands
+# =============================================================================
+
+build-examples: build check-arch prereqs
+	@echo "$(GREEN)Building example programs...$(NC)"
+	@if [ -f "examples/examples.gpr" ]; then \
+		$(ALR) exec -- $(GPRBUILD) -P examples/examples.gpr -p $(ALR_BUILD_FLAGS); \
+		echo "$(GREEN)✓ Examples built$(NC)"; \
+	else \
+		echo "$(YELLOW)Examples project not found$(NC)"; \
+	fi
+
+examples: build-examples
+
+run-examples: build-examples
+	@echo "$(GREEN)Running example programs...$(NC)"
+	@if [ -d "examples/bin" ]; then \
+		for example in examples/bin/*; do \
+			if [ -x "$$example" ] && [ -f "$$example" ]; then \
+				echo "$(CYAN)Running $$example...$(NC)"; \
+				$$example || true; \
+				echo ""; \
+			fi; \
+		done; \
+		echo "$(GREEN)✓ All examples completed$(NC)"; \
+	else \
+		echo "$(YELLOW)No examples found in examples/bin$(NC)"; \
+	fi
+
+test-examples: build-examples build-tests
+	@echo "$(GREEN)Running examples tests...$(NC)"
+	@if [ -f "$(TEST_DIR)/bin/examples_runner" ]; then \
+		$(TEST_DIR)/bin/examples_runner; \
+		if [ $$? -eq 0 ]; then \
+			echo "$(GREEN)✓ Examples tests passed$(NC)"; \
+		else \
+			echo "$(RED)✗ Examples tests failed$(NC)"; \
+			exit 1; \
+		fi; \
+	else \
+		echo "$(YELLOW)Examples runner not found at $(TEST_DIR)/bin/examples_runner$(NC)"; \
 		exit 1; \
 	fi
 

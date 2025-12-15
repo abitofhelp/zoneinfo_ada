@@ -1,5 +1,5 @@
 -- ===========================================================================
--- Zoneinfo.gpr - Hexagonal Architecture Greeter Library
+-- Zoneinfo.gpr - Hexagonal Architecture Timezone Library
 -- ===========================================================================
 -- Copyright (c) 2025 Michael Gardner, A Bit of Help, Inc.
 -- SPDX-License-Identifier: BSD-3-Clause
@@ -164,14 +164,12 @@ library project Zoneinfo is
       "Domain.Value_Object.Duration_Type",
       "Domain.Value_Object.Instant",
       "Domain.Value_Object.Option",
-      "Domain.Value_Object.Person",
       "Domain.Value_Object.Source_Info",
       "Domain.Value_Object.Zone_Id",
       "Domain.Value_Object.Zoned",
       --  Application types re-exported via API
       "Application",
       "Application.Command",
-      "Application.Command.Greet",
       "Application.Port",
       "Application.Port.Outbound",
       "Application.Port.Outbound.Writer");
