@@ -482,18 +482,30 @@ run-examples: build-examples
 		echo "$(YELLOW)No examples found in examples/bin$(NC)"; \
 	fi
 
-test-examples: build-examples build-tests
+test-examples: build-examples
 	@echo "$(GREEN)Running examples tests...$(NC)"
-	@if [ -f "$(TEST_DIR)/bin/examples_runner" ]; then \
-		$(TEST_DIR)/bin/examples_runner; \
-		if [ $$? -eq 0 ]; then \
-			echo "$(GREEN)✓ Examples tests passed$(NC)"; \
+	@failed=0; \
+	if [ -d "examples/bin" ]; then \
+		for example in examples/bin/*; do \
+			if [ -x "$$example" ] && [ -f "$$example" ]; then \
+				name=$$(basename "$$example"); \
+				echo "$(CYAN)Testing $$name...$(NC)"; \
+				if $$example > /dev/null 2>&1; then \
+					echo "  $(GREEN)✓ $$name passed$(NC)"; \
+				else \
+					echo "  $(RED)✗ $$name failed$(NC)"; \
+					failed=1; \
+				fi; \
+			fi; \
+		done; \
+		if [ $$failed -eq 0 ]; then \
+			echo "$(GREEN)✓ All examples tests passed$(NC)"; \
 		else \
-			echo "$(RED)✗ Examples tests failed$(NC)"; \
+			echo "$(RED)✗ Some examples tests failed$(NC)"; \
 			exit 1; \
 		fi; \
 	else \
-		echo "$(YELLOW)Examples runner not found at $(TEST_DIR)/bin/examples_runner$(NC)"; \
+		echo "$(YELLOW)No examples found in examples/bin$(NC)"; \
 		exit 1; \
 	fi
 

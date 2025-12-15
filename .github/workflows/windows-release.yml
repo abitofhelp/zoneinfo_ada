@@ -113,13 +113,16 @@ jobs:
       # -----------------------------------------------------------------------
       - name: Run integration tests
         shell: bash
+        env:
+          # Use forward slashes - GNAT/Windows handles them fine
+          # NEVER use cygpath -w (backslashes) - causes mixed separator bugs
+          TZIF_DATA_PATH: ${{ github.workspace }}/data/tzif/20251105T093308Z
         run: |
           echo "========================================"
           echo "Running Integration Tests"
           echo "========================================"
-          # Convert bash path to Windows path for GNAT runtime
-          export TZIF_DATA_PATH="$(cygpath -w "$(pwd)/data/tzif/20251105T093308Z")"
           echo "TZIF_DATA_PATH=$TZIF_DATA_PATH"
+          ls -la "$TZIF_DATA_PATH" | head -5
           ./test/bin/integration_runner.exe
           echo "Integration tests complete"
 
