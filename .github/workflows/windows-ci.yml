@@ -113,8 +113,8 @@ jobs:
       - name: Run integration tests
         shell: bash
         env:
-          # Use GitHub Actions native path expansion for Windows compatibility
-          TZIF_DATA_PATH: ${{ github.workspace }}/data/tzif/20251105T093308Z
+          # Use GitHub Actions native path - backslashes for Windows
+          TZIF_DATA_PATH: ${{ github.workspace }}\data\tzif\20251105T093308Z
         run: |
           echo "========================================"
           echo "Running Integration Tests"
