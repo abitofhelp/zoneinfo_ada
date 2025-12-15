@@ -112,16 +112,14 @@ jobs:
       # -----------------------------------------------------------------------
       - name: Run integration tests
         shell: bash
-        env:
-          # Use same pattern as tzif CI - forward slashes with github.workspace
-          TZIF_DATA_PATH: ${{ github.workspace }}/data/tzif/20251105T093308Z
         run: |
           echo "========================================"
           echo "Running Integration Tests"
           echo "========================================"
+          # Use pwd for clean forward-slash path
+          export TZIF_DATA_PATH="$(pwd)/data/tzif/20251105T093308Z"
           echo "TZIF_DATA_PATH=$TZIF_DATA_PATH"
-          echo "PWD=$(pwd)"
-          ls -la data/tzif/20251105T093308Z/ | head -5
+          ls -la "$TZIF_DATA_PATH" | head -5
           ./test/bin/integration_runner.exe
           echo "Integration tests complete"
 
