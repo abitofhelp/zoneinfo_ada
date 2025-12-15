@@ -115,8 +115,8 @@ jobs:
           echo "========================================"
           echo "Running Integration Tests"
           echo "========================================"
-          # Normalize path for Windows - convert to Unix-style path
-          export TZIF_DATA_PATH="$(pwd)/data/tzif/20251105T093308Z"
+          # Convert bash path to Windows path for GNAT runtime
+          export TZIF_DATA_PATH="$(cygpath -w "$(pwd)/data/tzif/20251105T093308Z")"
           echo "TZIF_DATA_PATH=$TZIF_DATA_PATH"
           ./test/bin/integration_runner.exe
           echo "Integration tests complete"
