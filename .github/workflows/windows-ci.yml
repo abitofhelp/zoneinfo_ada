@@ -59,7 +59,7 @@ jobs:
         run: |
           # Replace local path pins with GitHub URL pins
           sed -i "s|functional = { path = '../functional' }|functional = { url = \"https://github.com/abitofhelp/functional.git\", commit = \"5ef5b46d9dce871edebec5aefcb3d24d35eb9026\" }|" alire.toml
-          sed -i "s|tzif = { path = '../tzif' }|tzif = { url = \"https://github.com/abitofhelp/tzif.git\", commit = \"822dcf6010cd70455f0ed3a975dcbcdfd001e327\" }|" alire.toml
+          sed -i "s|tzif = { path = '../tzif' }|tzif = { url = \"https://github.com/abitofhelp/tzif_ada.git\", commit = \"822dcf6010cd70455f0ed3a975dcbcdfd001e327\" }|" alire.toml
           echo "Updated pins to use GitHub URLs"
           echo "=== alire.toml pins ==="
           grep -A5 '^\[\[pins\]\]' alire.toml || true
