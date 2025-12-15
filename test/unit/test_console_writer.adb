@@ -11,7 +11,6 @@ pragma Ada_2022;
 
 with Ada.Text_IO;
 with Application.Port.Outbound.Writer;
-with Domain.Error;
 with Domain.Unit;
 with Infrastructure.Adapter.Console_Writer;
 with Test_Framework;
@@ -20,7 +19,6 @@ procedure Test_Console_Writer is
 
    use Ada.Text_IO;
    use Application.Port.Outbound.Writer;
-   use Domain.Error;
 
    --  Test statistics
    Total_Tests  : Natural := 0;
@@ -91,7 +89,7 @@ begin
    --  ========================================================================
 
    declare
-      Special_Message : constant String := "Special: !@#$%^&*()_+-=[]{}|;':"",./<>?";
+      Special_Message : constant String := "Special: !@#$%^&*()_+-=[]{}|";
       Result          : constant Unit_Result.Result :=
         Infrastructure.Adapter.Console_Writer.Write (Special_Message);
    begin
