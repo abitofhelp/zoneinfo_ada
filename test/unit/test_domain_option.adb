@@ -7,13 +7,13 @@ with Domain;
 --  SPDX-License-Identifier: BSD-3-Clause
 --
 --  Purpose:
---    Unit tests for Domain.Value_Object.Option monad functionality.
+--    Unit tests for Domain.Types.Option monad functionality.
 --    Tests Of_Value/None constructors, Is_Some/Is_None queries, and all
 --    monadic combinators (Map, And_Then, Filter, Or_Else, etc.).
 --  ======================================================================
 
 with Ada.Text_IO;
-with Domain.Value_Object.Option;
+with Domain.Types.Option;
 with Test_Framework;
 
 procedure Test_Domain_Option is
@@ -39,16 +39,16 @@ procedure Test_Domain_Option is
    pragma Style_Checks (On);
 
    --  Instantiate Option for Integer (for testing)
-   package Int_Option is new Domain.Value_Object.Option.Generic_Option
+   package Int_Option is new Domain.Types.Option.Generic_Option
      (T => Integer);
 
    --  Instantiate Option for Boolean (for testing)
-   package Bool_Option is new Domain.Value_Object.Option.Generic_Option
+   package Bool_Option is new Domain.Types.Option.Generic_Option
      (T => Boolean);
 
 begin
    Put_Line ("========================================");
-   Put_Line ("Testing: Domain.Value_Object.Option");
+   Put_Line ("Testing: Domain.Types.Option");
    Put_Line ("========================================");
    New_Line;
 
@@ -551,7 +551,7 @@ begin
    --  Print summary
    New_Line;
    Put_Line ("========================================");
-   Put_Line ("Test Summary: Domain.Value_Object.Option");
+   Put_Line ("Test Summary: Domain.Types.Option");
    Put_Line ("========================================");
    Put_Line ("Total tests: " & Total_Tests'Image);
    Put_Line ("Passed:      " & Passed_Tests'Image);

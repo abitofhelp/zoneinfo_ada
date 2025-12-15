@@ -16,7 +16,7 @@ pragma Ada_2022;
 --    - Value objects typically include validation logic
 --
 --  See Also:
---    Domain.Value_Object.Option - Option monad for optional values
+--    Domain.Types.Option - Option monad for optional values
 --  =========================================================================
 
 package Domain.Value_Object
