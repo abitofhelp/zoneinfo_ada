@@ -81,7 +81,7 @@ jobs:
         shell: bash
         run: |
           echo "Building unit tests..."
-          alr exec -- gprbuild -P test/unit/unit_tests.gpr -p -j4
+          alr exec -- gprbuild -P test/unit/unit_tests.gpr -p -j4 -XTZIF_OS=windows
           echo "Unit tests build complete"
 
       # -----------------------------------------------------------------------
@@ -91,7 +91,7 @@ jobs:
         shell: bash
         run: |
           echo "Building integration tests..."
-          alr exec -- gprbuild -P test/integration/integration_tests.gpr -p -j4
+          alr exec -- gprbuild -P test/integration/integration_tests.gpr -p -j4 -XTZIF_OS=windows
           echo "Integration tests build complete"
 
       # -----------------------------------------------------------------------
