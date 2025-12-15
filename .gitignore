@@ -256,7 +256,11 @@ externals/*/lib/
 # Logs
 *.log
 
-data/
+# Ignore data/ except specific tzif folder needed for CI
+data/*
+!data/tzif/
+data/tzif/*
+!data/tzif/20251105T093308Z/
 *.zip
 *.tar.gz
 
