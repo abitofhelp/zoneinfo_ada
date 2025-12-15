@@ -57,8 +57,10 @@ PYTHON3 := python3
 # NOTE: --no-indirect-imports is NOT needed. Architecture is enforced via
 #       Stand-Alone Library with explicit Library_Interface in zoneinfo.gpr
 #       which prevents transitive access from API layer to internal packages.
-ALR_BUILD_FLAGS := -j8 | grep -E 'warning:|(style)|error:' || true
-ALR_TEST_FLAGS  := -j8 | grep -E 'warning:|(style)|error:' || true
+# Filter: show only warnings/style/errors, suppress ranlib "no symbols" noise
+BUILD_FILTER := 2>&1 | grep -v 'has no symbols' | grep -E 'warning:|\(style\)|error:' || true
+ALR_BUILD_FLAGS := -j8
+ALR_TEST_FLAGS  := -j8
 
 # =============================================================================
 # Directories
@@ -170,29 +172,29 @@ build: build-dev
 
 build-dev: check-arch prereqs
 	@echo "$(GREEN)Building $(PROJECT_NAME) (development mode)...$(NC)"
-	$(ALR) build --development -- $(ALR_BUILD_FLAGS)
+	@$(ALR) build --development -- $(ALR_BUILD_FLAGS) $(BUILD_FILTER)
 	@echo "$(GREEN)✓ Development build complete: $(LIB_DIR)/lib$(PROJECT_NAME).a$(NC)"
 
 build-opt: check-arch prereqs
 	@echo "$(GREEN)Building $(PROJECT_NAME) (optimized -O2)...$(NC)"
-	$(ALR) build -- -O2 $(ALR_BUILD_FLAGS)
+	@$(ALR) build -- -O2 $(ALR_BUILD_FLAGS) $(BUILD_FILTER)
 	@echo "$(GREEN)✓ Optimized build complete$(NC)"
 
 build-release: check-arch prereqs
 	@echo "$(GREEN)Building $(PROJECT_NAME) (release mode)...$(NC)"
-	$(ALR) build --release -- $(ALR_BUILD_FLAGS)
+	@$(ALR) build --release -- $(ALR_BUILD_FLAGS) $(BUILD_FILTER)
 	@echo "$(GREEN)✓ Release build complete: $(LIB_DIR)/lib$(PROJECT_NAME).a$(NC)"
 
 build-tests: check-arch prereqs
 	@echo "$(GREEN)Building test suites...$(NC)"
 	@if [ -f "$(TEST_DIR)/unit/unit_tests.gpr" ]; then \
-		$(ALR) exec -- $(GPRBUILD) -P $(TEST_DIR)/unit/unit_tests.gpr -p $(ALR_TEST_FLAGS) 2>&1 | sed '/has no symbols/d'; \
+		$(ALR) exec -- $(GPRBUILD) -P $(TEST_DIR)/unit/unit_tests.gpr -p $(ALR_TEST_FLAGS) $(BUILD_FILTER); \
 		echo "$(GREEN)✓ Unit tests built$(NC)"; \
 	else \
 		echo "$(YELLOW)Unit test project not found$(NC)"; \
 	fi
 	@if [ -f "$(TEST_DIR)/integration/integration_tests.gpr" ]; then \
-		$(ALR) exec -- $(GPRBUILD) -P $(TEST_DIR)/integration/integration_tests.gpr -p $(ALR_TEST_FLAGS) 2>&1 | sed '/has no symbols/d'; \
+		$(ALR) exec -- $(GPRBUILD) -P $(TEST_DIR)/integration/integration_tests.gpr -p $(ALR_TEST_FLAGS) $(BUILD_FILTER); \
 		echo "$(GREEN)✓ Integration tests built$(NC)"; \
 	else \
 		echo "$(YELLOW)Integration test project not found$(NC)"; \
