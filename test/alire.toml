@@ -1,0 +1,32 @@
+name = "zoneinfo_tests"
+description = "Test suite for zoneinfo"
+version = "2.0.0"
+authors = ["Michael Gardner"]
+maintainers = ["Michael Gardner <mike@abitofhelp.com>"]
+licenses = "BSD-3-Clause"
+
+# This crate is not meant to be published
+auto-gpr-with = false
+
+# Reference the actual GPR project files
+project-files = ["unit/unit_tests.gpr", "integration/integration_tests.gpr"]
+
+[[depends-on]]
+zoneinfo = "*"
+
+[[depends-on]]
+tzif = "*"
+
+[[depends-on]]
+functional = "*"
+
+[[depends-on]]
+gnatcov = "^22.0.1"
+
+[[depends-on]]
+gnatprove = "*"
+
+[[pins]]
+zoneinfo = { path = ".." }
+tzif = { path = "../../tzif" }
+functional = { path = "../../functional" }

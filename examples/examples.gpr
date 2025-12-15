@@ -1,0 +1,57 @@
+-- ===========================================================================
+-- Examples.gpr - Zoneinfo Example Programs
+-- ===========================================================================
+-- Copyright (c) 2025 Michael Gardner, A Bit of Help, Inc.
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Purpose:
+--   Example programs demonstrating Zoneinfo library usage.
+--   Shows hybrid DDD/Clean/Hexagonal architecture in action.
+-- ===========================================================================
+
+with "../config/zoneinfo_config.gpr";
+with "../zoneinfo_internal.gpr";
+
+project Examples is
+
+   for Source_Dirs use (
+      ".",
+      "api",
+      "workflows/desktop",
+      "workflows/spark"
+   );
+   for Object_Dir use "../obj/examples";
+   for Exec_Dir use "bin";
+
+   for Main use (
+      --  Desktop workflow examples (non-SPARK, uses live clock/TZif)
+      "local_to_utc_to_zone.adb",
+      "epoch_and_duration.adb",
+      "zoned_arithmetic.adb",
+      "scheduling_across_zones.adb",
+      --  SPARK workflow examples (formally provable, uses SPARK.Text_IO)
+      "instant_arithmetic.adb",
+      "civil_formatting.adb",
+      "duration_formatting.adb"
+   );
+
+   package Compiler is
+      for Default_Switches ("Ada") use Zoneinfo_Config.Ada_Compiler_Switches;
+   end Compiler;
+
+   package Binder is
+      --  -Es: Symbolic traceback
+      for Switches ("Ada") use ("-Es");
+   end Binder;
+
+   package Builder is
+      for Switches ("Ada") use ("-g");  -- Debug symbols
+   end Builder;
+
+   package Linker is
+      --  Link against GNAT tasking runtime (libgnarl) required by
+      --  protected type caches in TZif dependency
+      for Switches ("Ada") use ("-lgnarl");
+   end Linker;
+
+end Examples;

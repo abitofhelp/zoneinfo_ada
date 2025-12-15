@@ -1,0 +1,46 @@
+-- ===========================================================================
+-- unit_tests.gpr - Unit Test Suite for Zoneinfo
+-- ===========================================================================
+-- Copyright (c) 2025 Michael Gardner, A Bit of Help, Inc.
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Purpose:
+--   Unit test project for testing domain and application layers.
+--   Inherits validation profile settings from zoneinfo.gpr for consistency.
+--
+-- Build: alr build --validation
+--        make build-tests
+-- ===========================================================================
+
+with "../../zoneinfo_internal.gpr";
+
+project Unit_Tests is
+
+   for Source_Dirs use (".", "../common");
+   for Object_Dir use "../../obj/test/unit";
+   for Exec_Dir use "../bin";
+
+   --  Only the runner is Main; individual tests are procedures it calls
+   for Main use ("unit_runner.adb");
+
+   package Compiler is
+      --  Inherit compiler settings from internal project (no interface restrictions)
+      for Default_Switches ("Ada") use
+         Zoneinfo_Internal.Compiler'Default_Switches("Ada");
+   end Compiler;
+
+   package Binder is
+      for Switches ("Ada") use ("-Es");
+   end Binder;
+
+   package Linker is
+      --  Link against GNAT tasking runtime (libgnarl) required by
+      --  TZif's protected type caches (Source_Cache, Zone_Cache)
+      for Switches ("Ada") use ("-lgnarl");
+   end Linker;
+
+   package Builder is
+      for Switches ("Ada") use ("-g");  -- Debug symbols
+   end Builder;
+
+end Unit_Tests;

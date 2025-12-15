@@ -1,0 +1,210 @@
+-- ===========================================================================
+-- Zoneinfo.gpr - Hexagonal Architecture Greeter Library
+-- ===========================================================================
+-- Copyright (c) 2025 Michael Gardner, A Bit of Help, Inc.
+-- SPDX-License-Identifier: BSD-3-Clause
+-- See LICENSE file in the project root.
+--
+-- Purpose:
+--   Library project demonstrating hexagonal architecture (DDD/Clean/Hex)
+--   with dependency inversion, ports & adapters, and Result monad error
+--   handling. This is a library-only crate (no executables) containing
+--   domain, application, infrastructure, and API layers.
+--
+-- Produces: lib/libzoneinfo.a
+-- Publishable: YES - The library crate
+--
+-- Architecture:
+--   4-Layer Library (no Presentation/Bootstrap):
+--   - Domain: Pure business logic, value objects, errors
+--   - Application: Use cases, ports, commands
+--   - Infrastructure: Adapters (Console_Writer)
+--   - API: Public facade with platform-specific instantiations
+-- ===========================================================================
+
+with "zoneinfo_shared_config.gpr";
+with "functional.gpr";
+with "gnatcoll.gpr";
+with "tzif.gpr";
+with "config/zoneinfo_config.gpr";
+
+library project Zoneinfo is
+
+   for Library_Name use "zoneinfo";
+   for Library_Version use
+     Project'Library_Name & ".so." & Zoneinfo_Config.Crate_Version;
+
+   --  =======================================================================
+   --  Profile Selection (via Zoneinfo_Config package)
+   --  =======================================================================
+   --
+   --  Usage:
+   --    alr build                                      # standard (default)
+   --    alr build -- -XZONEINFO_PROFILE=embedded # embedded profile
+   --    alr build -- -XZONEINFO_PROFILE=baremetal
+   --
+   --  Profiles:
+   --    standard        - Desktop/server (1+ GB RAM)
+   --    embedded        - Ravenscar embedded (512KB+ RAM)
+   --    concurrent      - Multi-threaded (1+ GB RAM)
+   --    baremetal       - Zero footprint (128KB+ RAM)
+   --    stm32h7s78      - STM32H7S78-DK (620KB + 32MB PSRAM)
+   --    stm32mp135_linux - STM32MP135F-DK Linux (512 MB)
+   --  =======================================================================
+   type Profile_Type is
+     ("standard",           -- Desktop/server (1+ GB RAM)
+      "embedded",           -- Ravenscar embedded (512KB+ RAM)
+      "concurrent",         -- Multi-threaded (1+ GB RAM)
+      "baremetal",          -- Zero footprint (128KB+ RAM)
+      "stm32h7s78",         -- STM32H7S78-DK (620KB + 32MB PSRAM)
+      "stm32mp135_linux");  -- STM32MP135F-DK Linux (512 MB)
+
+   Profile : Profile_Type := external ("ZONEINFO_PROFILE", "standard");
+
+   --  =======================================================================
+   --  Operating System Detection
+   --  =======================================================================
+   --  Used to include only the appropriate platform-specific code.
+   --  On Unix-like systems (Linux, macOS, BSD), exclude Windows code.
+   --  On Windows, exclude POSIX code.
+   --  =======================================================================
+   type OS_Type is ("unix", "windows");
+   OS : OS_Type := external ("ZONEINFO_OS", "unix");
+
+   --  =======================================================================
+   --  Source Directories (Profile-Dependent)
+   --  =======================================================================
+   --  Include all source subdirectories + selected configuration profile.
+   --  Only ONE Zoneinfo_Config package will be visible to the compiler.
+   --  =======================================================================
+   case Profile is
+      when "standard" =>
+         for Source_Dirs use ("src/**", "config/profiles/standard");
+      when "embedded" =>
+         for Source_Dirs use ("src/**", "config/profiles/embedded");
+      when "concurrent" =>
+         for Source_Dirs use ("src/**", "config/profiles/concurrent");
+      when "baremetal" =>
+         for Source_Dirs use ("src/**", "config/profiles/baremetal");
+      when "stm32h7s78" =>
+         for Source_Dirs use ("src/**", "config/profiles/stm32h7s78");
+      when "stm32mp135_linux" =>
+         for Source_Dirs use ("src/**", "config/profiles/stm32mp135_linux");
+   end case;
+
+   --  =======================================================================
+   --  Platform-Specific Source Exclusions
+   --  =======================================================================
+   --  Note: Zoneinfo relies on TZif for platform-specific I/O.
+   --  Currently no zoneinfo-specific platform exclusions needed.
+   --  When Windows-specific files are added, uncomment and update:
+   --
+   --  case OS is
+   --     when "unix" =>
+   --        for Excluded_Source_Files use
+   --          ("zoneinfo-api-windows.ads",
+   --           "zoneinfo-api__windows.adb",
+   --           "infrastructure-adapter-windows_clock.ads",
+   --           "infrastructure-adapter-windows_clock.adb");
+   --     when "windows" =>
+   --        for Excluded_Source_Files use
+   --          ("zoneinfo-api-desktop.ads",
+   --           "infrastructure-adapter-desktop_clock.ads",
+   --           "infrastructure-adapter-desktop_clock.adb");
+   --  end case;
+   --  =======================================================================
+
+   for Object_Dir use "obj/" & Zoneinfo_Config.Build_Profile;
+   for Create_Missing_Dirs use "True";
+   for Library_Dir use "lib";
+
+   type Library_Type_Type is ("relocatable", "static", "static-pic");
+   Library_Type : Library_Type_Type :=
+     external ("ZONEINFO_LIBRARY_TYPE", external ("LIBRARY_TYPE", "static"));
+   for Library_Kind use Library_Type;
+
+   --  =======================================================================
+   --  Stand-Alone Library Configuration - PUBLIC API ENFORCEMENT
+   --  =======================================================================
+   --
+   --  Hybrid Library Architecture: Only Domain and API are public
+   --
+   --  PUBLIC (Publishable, Reusable):
+   --    - Zoneinfo            Root package
+   --    - Zoneinfo.API        Stable public facade
+   --    - Domain.*                  Pure domain logic, value objects
+   --
+   --  PRIVATE (Application-specific, Hidden):
+   --    - Application.*             Application-specific use cases
+   --    - Infrastructure.*          Concrete adapters
+   --
+   --  ENFORCED BY:
+   --    - Library_Standalone: Enables stand-alone library mode
+   --    - Library_Interface: Explicitly lists ONLY public packages
+   --    - GPRbuild: Prevents clients from accessing non-listed packages
+   --  =======================================================================
+
+   for Library_Standalone use "standard";
+
+   --  Public Interface: Root package + Domain layer + API facade + Config
+   --  Infrastructure is EXCLUDED (implementation detail)
+   --  Application types needed by API are included for re-export
+   --  Zoneinfo_Config is included for clients to access profile constants
+   for Library_Interface use
+     ("Zoneinfo_Config",
+      "Zoneinfo",
+      "Zoneinfo.API",
+      "Zoneinfo.Version",
+      "Domain",
+      "Domain.Error",
+      "Domain.Error.Result",
+      "Domain.Unit",
+      "Domain.Value_Object",
+      "Domain.Value_Object.Civil",
+      "Domain.Value_Object.Duration_Type",
+      "Domain.Value_Object.Instant",
+      "Domain.Value_Object.Option",
+      "Domain.Value_Object.Person",
+      "Domain.Value_Object.Source_Info",
+      "Domain.Value_Object.Zone_Id",
+      "Domain.Value_Object.Zoned",
+      --  Application types re-exported via API
+      "Application",
+      "Application.Command",
+      "Application.Command.Greet",
+      "Application.Port",
+      "Application.Port.Outbound",
+      "Application.Port.Outbound.Writer");
+
+   -- ==========================================================================
+   -- Platform-Specific Naming
+   -- ==========================================================================
+   -- On Windows, use the alternate body file for Zoneinfo.API.
+   -- Currently not needed - zoneinfo relies on TZif for platform I/O.
+   -- When Windows-specific bodies are added, uncomment:
+   --
+   -- package Naming is
+   --    case OS is
+   --       when "unix" =>
+   --          null;  --  Use default naming
+   --       when "windows" =>
+   --          for Body ("Zoneinfo.API") use "zoneinfo-api__windows.adb";
+   --    end case;
+   -- end Naming;
+   -- ==========================================================================
+
+   -- ==========================================================================
+   -- Package References: Inherit from Zoneinfo_Shared_Config
+   -- ==========================================================================
+
+   package Compiler renames Zoneinfo_Shared_Config.Compiler;
+   package Binder renames Zoneinfo_Shared_Config.Binder;
+   package Builder renames Zoneinfo_Shared_Config.Builder;
+   package Format renames Zoneinfo_Shared_Config.Format;
+   package Documentation renames Zoneinfo_Shared_Config.Documentation;
+
+   package Install is
+      for Artifacts (".") use ("share");
+   end Install;
+
+end Zoneinfo;

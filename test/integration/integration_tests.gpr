@@ -1,0 +1,47 @@
+-- ===========================================================================
+-- integration_tests.gpr - Integration Test Suite for Zoneinfo
+-- ===========================================================================
+-- Copyright (c) 2025 Michael Gardner, A Bit of Help, Inc.
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Purpose:
+--   Integration test project for testing cross-layer interactions.
+--   Tests the public API with real infrastructure adapters.
+--
+-- Build: alr exec -- gprbuild -P test/integration/integration_tests.gpr
+--        make build-tests
+-- ===========================================================================
+
+with "../../zoneinfo_internal.gpr";
+
+project Integration_Tests is
+
+   for Source_Dirs use (".", "../common");
+   for Object_Dir use "../../obj/test/integration";
+   for Exec_Dir use "../bin";
+
+   --  Only the runner is Main; individual tests are procedures it calls
+   for Main use ("integration_runner.adb");
+
+   package Compiler is
+      --  Inherit compiler settings from internal project
+      for Default_Switches ("Ada") use
+         Zoneinfo_Internal.Compiler'Default_Switches("Ada");
+   end Compiler;
+
+   package Binder is
+      --  -Es: Symbolic traceback
+      for Switches ("Ada") use ("-Es");
+   end Binder;
+
+   package Linker is
+      --  Link against GNAT tasking runtime (libgnarl) required by
+      --  TZif's protected type caches (Source_Cache, Zone_Cache)
+      for Switches ("Ada") use ("-lgnarl");
+   end Linker;
+
+   package Builder is
+      for Switches ("Ada") use ("-g");  -- Debug symbols
+   end Builder;
+
+end Integration_Tests;

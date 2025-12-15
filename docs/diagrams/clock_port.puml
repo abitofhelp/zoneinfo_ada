@@ -1,0 +1,194 @@
+@startuml clock_port
+!theme plain
+skinparam linetype ortho
+skinparam nodesep 150
+skinparam ranksep 200
+skinparam packageStyle rectangle
+
+title Pluggable Port Pattern\nClock_Port (Time Sources) + Timezone_Port (tzif)
+
+package "Application Layer" as Application #E8F5E9 {
+
+  package "Ports" as Ports {
+    interface "Clock_Port" as ClockPort <<signature>> #FFFF99 {
+      **Time Source Abstraction**
+      --
+      + Now() : Result[Instant]
+      + Now_Monotonic() : Result[Monotonic_Instant]
+      --
+      <i>Generic formal package</i>
+    }
+
+    interface "Timezone_Port" as TimezonePort <<signature>> #FFFF99 {
+      **Timezone Data Abstraction**
+      --
+      + Get_UTC_Offset(Instant, Zone) : Result[Offset]
+      + To_Civil(Zoned) : Civil
+      + To_Zoned(Civil, Zone) : Result[Zoned]
+      + Is_Valid_Zone(Zone) : Boolean
+      --
+      <i>tzif is single source of truth</i>
+    }
+  }
+
+  package "Use Cases" as UseCases {
+    class "Generic_Now" as GenericNow <<generic>> {
+      generic (Clock : Clock_Port)
+      --
+      + Execute() : Result[Instant]
+    }
+
+    class "Generic_Now_Zoned" as GenericNowZoned <<generic>> {
+      generic (Clock : Clock_Port,
+               TZ : Timezone_Port)
+      --
+      + Execute(Zone : Zone_ID) : Result[Zoned]
+    }
+
+    class "Generic_To_Civil" as GenericToCivil <<generic>> {
+      generic (TZ : Timezone_Port)
+      --
+      + Execute(Z : Zoned) : Civil
+    }
+  }
+
+  GenericNow ..> ClockPort : uses
+  GenericNowZoned ..> ClockPort : uses
+  GenericNowZoned ..> TimezonePort : uses
+  GenericToCivil ..> TimezonePort : uses
+}
+
+package "Infrastructure Layer" as Infrastructure #E6F3FF {
+
+  package "Clock Adapters" as ClockAdapters {
+
+    class "Desktop_Clock" as DesktopClock <<adapter>> #90EE90 {
+      **Standard Ada Runtime**
+      --
+      + Now() : Result[Instant]
+      + Now_Monotonic() : Result[Monotonic_Instant]
+      --
+      <i>Uses Ada.Calendar</i>
+      <i>Uses Ada.Real_Time</i>
+    }
+
+    class "STM32F769I_Clock" as STM32Clock <<adapter>> #FFB6C1 {
+      **Embedded Reference**
+      --
+      + Now() : Result[Instant]
+      + Now_Monotonic() : Result[Monotonic_Instant]
+      --
+      <i>Reads RTC registers</i>
+      <i>Uses SysTick</i>
+    }
+
+    class "Mock_Clock" as MockClock <<adapter>> #E6E6FA {
+      **Testing Support**
+      --
+      + Set_Time(Instant)
+      + Advance(Duration)
+      + Now() : Result[Instant]
+    }
+  }
+
+  package "Timezone Adapters" as TZAdapters {
+
+    class "Tzif_Adapter" as TzifAdapter <<adapter>> #FFD700 {
+      **tzif Crate Integration**
+      --
+      + Get_UTC_Offset(Instant, Zone) : Result[Offset]
+      + To_Civil(Zoned) : Civil
+      + To_Zoned(Civil, Zone) : Result[Zoned]
+      + Is_Valid_Zone(Zone) : Boolean
+      --
+      <i>Wraps tzif crate</i>
+      <i>Single source of truth</i>
+      <i>for all timezone data</i>
+    }
+  }
+
+  DesktopClock .up.|> ClockPort : implements
+  STM32Clock .up.|> ClockPort : implements
+  MockClock .up.|> ClockPort : implements
+  TzifAdapter .up.|> TimezonePort : implements
+}
+
+package "API Layer" as API #FFEBCD {
+
+  class "API.Desktop" as APIDesktop <<composition root>> {
+    **Desktop Entry Point**
+    --
+    + Now() : Result[Instant]
+    + Now_Zoned(Zone) : Result[Zoned]
+    + Now_UTC() : Result[Zoned]
+    + To_Civil(Zoned) : Civil
+    --
+    <i>Wires Desktop_Clock</i>
+    <i>Wires Tzif_Adapter</i>
+  }
+
+  class "API.Operations" as APIOperations <<SPARK-safe>> #98FB98 {
+    **Pure Operations**
+    --
+    + Add(Instant, Duration) : Result[Instant]
+    + Diff(Instant, Instant) : Duration
+    --
+    <i>No ports needed</i>
+    <i>SPARK verifiable</i>
+  }
+}
+
+APIDesktop -down-> DesktopClock : wires
+APIDesktop -down-> TzifAdapter : wires
+APIDesktop -down-> GenericNowZoned : instantiates
+APIDesktop -down-> GenericToCivil : instantiates
+
+note right of TimezonePort
+  **tzif as Single Source of Truth**
+  ══════════════════════════════════
+  • All timezone data from tzif crate
+  • No cached offsets in Domain
+  • Consistent DST gap/overlap handling
+  • Zone validation against IANA database
+end note
+
+note bottom of TzifAdapter
+  **External Dependency**
+  ════════════════════════
+  • tzif crate provides:
+    - TZif file parsing
+    - UTC offset lookup
+    - DST transition detection
+  • Infrastructure isolates
+    this dependency
+end note
+
+legend right
+  **Two Pluggable Ports**
+  ═══════════════════════════════════
+
+  **Clock_Port** (Time Source)
+  What time is it now?
+  → Desktop_Clock (Ada.Calendar)
+  → STM32F769I_Clock (RTC hardware)
+  → Mock_Clock (testing)
+
+  **Timezone_Port** (Timezone Data)
+  What's the offset/civil time?
+  → Tzif_Adapter (tzif crate)
+  Single implementation, but port
+  pattern enables future alternatives.
+
+  **Design Principle**
+  ═══════════════════════════════════
+  Domain layer is PURE:
+  - No time source dependency
+  - No timezone data dependency
+  - Zoned = Instant + Zone_ID only
+
+  Application layer uses ports:
+  - To_Civil needs Timezone_Port
+  - Now_Zoned needs both ports
+endlegend
+
+@enduml

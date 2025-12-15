@@ -1,0 +1,152 @@
+@startuml domain_types
+!theme plain
+skinparam linetype ortho
+skinparam nodesep 150
+skinparam ranksep 200
+skinparam classAttributeIconSize 0
+
+title Zoneinfo Domain Types\nPure Value Objects (No External Dependencies)
+
+package "Domain Layer" as Domain #FFF9E6 {
+
+  class Instant <<value object>> #E8F5E9 {
+    **Absolute moment in time**
+    --
+    - Epoch_Nanos : Integer_64
+    --
+    + From_Unix_Epoch(Seconds, Nanos) : Result[Instant]
+    + From_Epoch_Nanos(Nanos) : Instant
+    + To_Unix_Epoch() : (Seconds, Nanos)
+    + Get_Epoch_Nanos() : Integer_64
+    + Add(Duration) : Result[Instant]
+    + Subtract(Duration) : Result[Instant]
+    + Diff(Other : Instant) : Duration
+    --
+    <i>Timezone-agnostic</i>
+    <i>Comparable</i>
+  }
+
+  class Zoned <<value object>> #E6F3FF {
+    **Instant + Timezone**
+    --
+    - Instant_Value : Instant
+    - Zone : Zone_ID
+    --
+    + Create(Instant, Zone) : Zoned
+    + To_Instant() : Instant
+    + Get_Zone() : Zone_ID
+    + With_Zone(Zone) : Zoned
+    --
+    <i>Same instant, different zones</i>
+    <i>are NOT equal</i>
+    ..
+    <i>NOTE: To_Civil() is in</i>
+    <i>Application layer (needs tzif)</i>
+  }
+
+  class Civil <<value object>> #FFE4E1 {
+    **Calendar components**
+    --
+    - Year : Year_Number
+    - Month : Month_Number
+    - Day : Day_Number
+    - Hour : Hour_Number
+    - Minute : Minute_Number
+    - Second : Second_Number
+    - Nanosecond : Nanoseconds_Type
+    --
+    + Create(...) : Result[Civil]
+    + Get_Year() : Year_Number
+    + Get_Month() : Month_Number
+    + Get_Day() : Day_Number
+    ...
+    --
+    <i>No timezone awareness</i>
+    <i>Ambiguous without context</i>
+  }
+
+  class Duration_Type <<value object>> #FFFACD {
+    **Time span**
+    --
+    - Seconds : Integer_64
+    - Nanoseconds : Nanoseconds_Range
+    --
+    + From_Seconds(Integer_64) : Duration_Type
+    + From_Millis(Integer_64) : Duration_Type
+    + From_Nanos(Integer_64) : Duration_Type
+    + To_Seconds() : Integer_64
+    + To_Nanos() : Integer_64
+    + Add(Duration_Type) : Duration_Type
+    + Negate() : Duration_Type
+    + Is_Negative() : Boolean
+    --
+    <i>Can be negative</i>
+    <i>Nanoseconds: 0..999_999_999</i>
+  }
+
+  class Zone_ID <<value object>> #F0E68C {
+    **Timezone identifier**
+    --
+    - Value : Bounded_String
+    --
+    + UTC : constant Zone_ID
+    + From_String(String) : Result[Zone_ID]
+    + To_String() : String
+    + Is_UTC() : Boolean
+    --
+    <i>IANA format: "America/New_York"</i>
+    <i>Full validation via Timezone_Port</i>
+  }
+
+  note "Nanoseconds_Range\nrange 0 .. 999_999_999" as N1
+
+}
+
+' Relationships
+Zoned *-right-> "1" Instant : contains
+Zoned *-down-> "1" Zone_ID : contains
+Instant .down.> Duration_Type : "Diff() returns"
+Duration_Type .up.> Instant : "Add/Subtract"
+
+' Key concepts
+legend right
+  **Pure Domain Layer**
+  ════════════════════════════
+  Domain types have ZERO external
+  dependencies. All operations that
+  need timezone data go through
+  Timezone_Port in Application layer.
+
+  **Three DateTime Kinds**
+  ════════════════════════════
+
+  **Instant** (Absolute)
+  • Single point on timeline
+  • No timezone, just epoch nanos
+  • Use for: timestamps, logging
+
+  **Zoned** (Instant + Zone)
+  • Instant with timezone context
+  • Use for: user-facing times
+  • To_Civil via Application layer
+
+  **Civil** (Calendar)
+  • Year/Month/Day/Hour/Min/Sec
+  • No timezone awareness
+  • Use for: birthdays, schedules
+
+  **Conversions (Application Layer)**
+  ════════════════════════════
+  Zoned → Civil: via Timezone_Port
+    (needs UTC offset from tzif)
+  Civil → Zoned: via Timezone_Port
+    (may fail: DST gaps/overlaps)
+
+  **Domain-Only Operations**
+  ════════════════════════════
+  Instant + Duration → Instant
+  Instant - Instant → Duration
+  Zoned.With_Zone → Zoned
+endlegend
+
+@enduml

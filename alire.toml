@@ -1,0 +1,41 @@
+name = "zoneinfo"
+description = "Ada 2022 timezone library for zone calculations and durations"
+version = "1.0.0"
+authors = ["Michael Gardner"]
+maintainers = ["Michael Gardner <mike@abitofhelp.com>"]
+maintainers-logins = ["abitofhelp"]
+licenses = "BSD-3-Clause"
+website = "https://github.com/abitofhelp/zoneinfo"
+project-files = ["zoneinfo.gpr"]
+tags = [
+    "timezone",
+    "zoneinfo",
+    "time",
+    "duration",
+    "functional",
+    "result-monad",
+    "hexagonal",
+    "ddd",
+    "clean",
+    "spark"
+]
+
+[build-switches]
+"*".Ada_Version = "Ada2022"
+"*".Style_Checks = "yes"
+
+[[depends-on]]
+gnat = ">=13"
+
+[[depends-on]]
+gnatcoll = "^25.0.0"
+
+[[depends-on]]
+functional = "^4.0.0"
+
+[[depends-on]]
+tzif = "^3.0.0"
+
+[[pins]]
+functional = { path = '../functional' }
+tzif = { path = '../tzif' }
