@@ -113,8 +113,8 @@ jobs:
       - name: Run integration tests
         shell: bash
         env:
-          # Use relative path - absolute paths with drive letters cause issues
-          TZIF_DATA_PATH: data/tzif/20251105T093308Z
+          # Use relative path with Windows backslashes
+          TZIF_DATA_PATH: .\data\tzif\20251105T093308Z
         run: |
           echo "========================================"
           echo "Running Integration Tests"
