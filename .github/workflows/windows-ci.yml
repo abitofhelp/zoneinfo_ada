@@ -58,7 +58,8 @@ jobs:
         shell: bash
         run: |
           # Replace local path pins with GitHub URL pins
-          sed -i "s|functional = { path = '../functional' }|functional = { url = \"https://github.com/abitofhelp/functional.git\", commit = \"5ef5b46d9dce871edebec5aefcb3d24d35eb9026\" }|" alire.toml
+          # functional v4.0.0, tzif v3.0.0
+          sed -i "s|functional = { path = '../functional' }|functional = { url = \"https://github.com/abitofhelp/functional.git\", commit = \"d429ad4534d3d19e76f6cf19b0f96fa008925658\" }|" alire.toml
           sed -i "s|tzif = { path = '../tzif' }|tzif = { url = \"https://github.com/abitofhelp/tzif_ada.git\", commit = \"f585c7a1625b26aaa768f8162b641d657a71e012\" }|" alire.toml
           echo "Updated pins to use GitHub URLs"
           echo "=== alire.toml pins ==="
@@ -111,12 +112,13 @@ jobs:
       # -----------------------------------------------------------------------
       - name: Run integration tests
         shell: bash
+        env:
+          # Use GitHub Actions native path expansion for Windows compatibility
+          TZIF_DATA_PATH: ${{ github.workspace }}/data/tzif/20251105T093308Z
         run: |
           echo "========================================"
           echo "Running Integration Tests"
           echo "========================================"
-          # Convert bash path to Windows path for GNAT runtime
-          export TZIF_DATA_PATH="$(cygpath -w "$(pwd)/data/tzif/20251105T093308Z")"
           echo "TZIF_DATA_PATH=$TZIF_DATA_PATH"
           ./test/bin/integration_runner.exe
           echo "Integration tests complete"
