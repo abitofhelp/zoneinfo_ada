@@ -34,7 +34,7 @@ gnatcoll = "^25.0.0"
 functional = "^4.0.0"
 
 [[depends-on]]
-tzif = "^3.0.0"
+tzif = "^3.0.1"
 
 [[pins]]
 functional = { path = '../functional' }
