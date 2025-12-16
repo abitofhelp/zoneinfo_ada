@@ -218,7 +218,7 @@ package My_Ops is new Zoneinfo.API.Operations (Writer => UART_Write);
 ## Testing
 
 ```bash
-# Run all tests (98 tests: 88 unit + 10 integration)
+# Run all tests
 make test-all
 
 # Build tests
@@ -335,7 +335,7 @@ https://github.com/abitofhelp
 - ✅ 4-layer hexagonal architecture
 - ✅ Public API facade with three-package pattern
 - ✅ Desktop platform support (Console_Writer)
-- ✅ Full test suite (98 tests)
+- ✅ Full test suite (see CHANGELOG)
 - ✅ Comprehensive documentation
 - ✅ SPARK_Mode boundaries defined
 - ⬜ Embedded platform composition roots (documented, not yet implemented)
