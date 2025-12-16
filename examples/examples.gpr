@@ -9,7 +9,7 @@
 --   Shows hybrid DDD/Clean/Hexagonal architecture in action.
 -- ===========================================================================
 
-with "../config/zoneinfo_config.gpr";
+with "../config/zoneinfo_internal_config.gpr";
 with "../zoneinfo_internal.gpr";
 
 project Examples is
@@ -36,7 +36,7 @@ project Examples is
    );
 
    package Compiler is
-      for Default_Switches ("Ada") use Zoneinfo_Config.Ada_Compiler_Switches;
+      for Default_Switches ("Ada") use Zoneinfo_Internal_Config.Ada_Compiler_Switches;
    end Compiler;
 
    package Binder is

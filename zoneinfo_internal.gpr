@@ -14,10 +14,7 @@
 -- External clients should NEVER depend on this project - use zoneinfo.gpr instead.
 -- ===========================================================================
 
-with "config/zoneinfo_config.gpr";
-with "functional.gpr";
-with "gnatcoll.gpr";
-with "tzif.gpr";
+with "config/zoneinfo_internal_config.gpr";
 
 library project Zoneinfo_Internal is
 
@@ -69,7 +66,7 @@ library project Zoneinfo_Internal is
    for Languages use ("Ada");
 
    package Compiler is
-      for Default_Switches ("Ada") use Zoneinfo_Config.Ada_Compiler_Switches;
+      for Default_Switches ("Ada") use Zoneinfo_Internal_Config.Ada_Compiler_Switches;
    end Compiler;
 
 end Zoneinfo_Internal;
