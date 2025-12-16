@@ -203,6 +203,8 @@ docs/book/
 *.backup
 *.old
 *~
+*_backup_*/
+docs_backup*/
 
 # Temporary files
 *.tmp

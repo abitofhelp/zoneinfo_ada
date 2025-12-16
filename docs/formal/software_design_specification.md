@@ -1,11 +1,11 @@
 # Software Design Specification
 
-**Version:** 1.0.0
-**Date:** 2025-12-03
-**SPDX-License-Identifier:** BSD-3-Clause
-**License File:** See the LICENSE file in the project root
-**Copyright:** (c) 2025 Michael Gardner, A Bit of Help, Inc.
-**Status:** In Development
+**Version:** 1.0.0<br>
+**Date:** 2025-12-15<br>
+**SPDX-License-Identifier:** BSD-3-Clause<br>
+**License File:** See the LICENSE file in the project root<br>
+**Copyright:** © 2025 Michael Gardner, A Bit of Help, Inc.<br>
+**Status:** Released
 
 ---
 
@@ -18,22 +18,22 @@ This Software Design Specification (SDS) describes the internal architecture, pa
 ### 1.2 Scope
 
 This document covers:
-- 4-layer hexagonal architecture
-- Three datetime kinds (Instant, Zoned, Civil)
-- Pluggable clock port pattern
-- Package hierarchy and dependencies
-- Type definitions and contracts
+- 4-layer hexagonal architecture (Domain, Application, Infrastructure, API)
+- Three datetime value objects (Instant, Zoned, Civil) with Duration and Zone_ID
+- Pluggable clock port pattern for platform abstraction
+- Package hierarchy and dependencies across all layers
+- Type definitions, contracts, and invariants
 - Static dependency injection via generics
-- SPARK verification boundaries
+- SPARK verification boundaries and mixed-mode design
 
 ### 1.3 References
 
 - Software Requirements Specification (SRS)
-- [Domain Types Diagram](../diagrams/domain_types.svg)
-- [Clock Port Pattern Diagram](../diagrams/clock_port.svg)
-- [Library Architecture](../common/diagrams/library_architecture.svg)
-- Ada 2022 Reference Manual
+- Ada 2022 Reference Manual (ISO/IEC 8652:2023)
 - SPARK 2014 Reference Manual
+- Domain-Driven Design (Eric Evans, 2003)
+- Clean Architecture (Robert C. Martin, 2017)
+- Hexagonal Architecture (Alistair Cockburn, 2005)
 
 ---
 
@@ -41,801 +41,816 @@ This document covers:
 
 ### 2.1 Layer Architecture
 
-Zoneinfo uses a **4-layer library architecture** (Domain, Application, Infrastructure, API):
+Zoneinfo uses a **4-layer library architecture** following Domain-Driven Design, Clean Architecture, and Hexagonal Architecture principles:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                        API Layer                             │
 │  Public facade + composition roots + SPARK operations        │
-│  - API.Desktop (default)                                     │
-│  - API.Discovery (TZif source management)                   │
-│  - API.Embedded.STM32F769I (reference)                      │
-│  - API.Operations (SPARK-safe)                              │
+│  - API (re-exports Domain types)                            │
+│  - API.Desktop (default composition root)                   │
+│  - API.Discovery (timezone enumeration)                     │
+│  - API.Operations (SPARK-safe pure operations)              │
+│  - API.Format / API.Parse (formatting utilities)            │
 │  src/api/                                                    │
 └─────────────────────────────┬───────────────────────────────┘
                               │ depends on
 ┌─────────────────────────────▼───────────────────────────────┐
 │                   Infrastructure Layer                       │
-│  Clock adapters implementing Clock_Port                      │
-│  - Desktop_Clock (Ada.Calendar)                             │
-│  - STM32F769I_Clock (embedded RTC)                          │
-│  - Mock_Clock (testing)                                     │
+│  Adapters implementing outbound ports                        │
+│  - Desktop_Clock (Ada.Calendar adapter)                     │
+│  - Tzif_Adapter (tzif library adapter)                      │
+│  - Console_Writer (Ada.Text_IO adapter)                     │
+│  - Mock adapters for testing                                │
 │  src/infrastructure/                                         │
 └─────────────────────────────┬───────────────────────────────┘
                               │ implements
 ┌─────────────────────────────▼───────────────────────────────┐
 │                    Application Layer                         │
-│  Use cases, ports (Clock_Port signature)                     │
-│  - Now, Now_Zoned, Now_UTC use cases                        │
+│  Use cases and port definitions                              │
+│  - UseCase.Get_Now (current time retrieval)                 │
+│  - UseCase.Timezone_Ops (conversions)                       │
+│  - UseCase.Discovery (timezone queries)                     │
+│  - Port.Outbound.Clock (clock port signature)               │
+│  - Port.Outbound.Timezone (timezone port signature)         │
+│  - Port.Outbound.Writer (output port signature)             │
 │  src/application/                                            │
 └─────────────────────────────┬───────────────────────────────┘
                               │ depends on
 ┌─────────────────────────────▼───────────────────────────────┐
 │                      Domain Layer                            │
-│  Pure types: Instant, Zoned, Civil, Duration, Zone_ID        │
-│  Result/Option monads (copied from functional)               │
+│  Pure value objects and business logic                       │
+│  - Value_Object.Instant (epoch nanoseconds)                 │
+│  - Value_Object.Zoned (Instant + Zone_ID)                   │
+│  - Value_Object.Civil (calendar components)                 │
+│  - Value_Object.Duration_Type (time spans)                  │
+│  - Value_Object.Zone_ID (IANA identifiers)                  │
+│  - Error (error types and Result monad)                     │
 │  src/domain/                                                 │
 └─────────────────────────────────────────────────────────────┘
                               │
-                              │ queries
+                              │ queries (via Timezone_Port)
 ┌─────────────────────────────▼───────────────────────────────┐
 │                     tzif (external)                          │
-│  Timezone data queries and DST calculations                  │
+│  IANA timezone database queries                              │
+│  - UTC offset calculation                                    │
+│  - DST transition handling                                   │
+│  - Civil ↔ Instant conversion                               │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ### 2.2 Dependency Rules
 
-| Layer | May Depend On |
-|-------|---------------|
-| Domain | Nothing (pure, zero external dependencies) |
-| Application | Domain only |
-| Infrastructure | Application, Domain |
-| API | All layers (composition root) |
+| Layer | May Depend On | SPARK Mode |
+|-------|---------------|------------|
+| **Domain** | Nothing (zero external dependencies) | On (check) |
+| **Application** | Domain only | On (check) |
+| **Infrastructure** | Application, Domain, external libraries | Off (uses Ada.Calendar, etc.) |
+| **API** | All layers (composition root) | Mixed (Operations: On, others: Off) |
 
-### 2.3 Hexagonal Pattern (Clock Port)
+**Key Principle**: Dependencies point inward. Inner layers know nothing about outer layers.
+
+### 2.3 Hexagonal Pattern (Port and Adapter)
+
+Zoneinfo uses the Hexagonal Architecture pattern to abstract external dependencies:
 
 ```
            ┌──────────────────────────────────────┐
            │          Application Core            │
-           │                                      │
-    ┌──────┤  Domain ← Application               │
-    │      │                                      │
-    │      └──────────────────────────────────────┘
-    │                       │
-    │                       │ Clock_Port
-    │                       ▼
-    │                ┌────────────┐
-    │                │ Now_Zoned  │
-    │                │  Use Case  │
-    │                └────────────┘
-    │                       ▲
-    │                       │ Generic instantiation
-    │      ┌────────────────┼────────────────┐
-    │      │                │                │
-    ▼      ▼                ▼                ▼
-┌──────────────┐   ┌──────────────┐   ┌──────────────┐
-│Desktop_Clock │   │STM32F769I    │   │ Mock_Clock   │
-│(Ada.Calendar)│   │   _Clock     │   │ (Testing)    │
-└──────────────┘   └──────────────┘   └──────────────┘
+           │   (Use Cases + Port Signatures)      │
+           │                                       │
+           │   Get_Now <────┐    Timezone_Ops    │
+           │                │                     │
+           └────────┬───────┴──────┬──────────────┘
+                    │              │
+          Needs: Clock_Port    Needs: Timezone_Port
+                    │              │
+        ┌───────────▼──────┐  ┌───▼──────────────┐
+        │ Desktop_Clock    │  │  Tzif_Adapter    │
+        │ (Ada.Calendar)   │  │  (tzif library)  │
+        └──────────────────┘  └──────────────────┘
+           Infrastructure         Infrastructure
 ```
+
+**Ports** (Application layer):
+- `Clock_Port` - Abstract clock interface (signature package)
+- `Timezone_Port` - Abstract timezone data interface
+- `Writer_Port` - Abstract output interface
+
+**Adapters** (Infrastructure layer):
+- `Desktop_Clock` - Implements Clock_Port using Ada.Calendar
+- `Tzif_Adapter` - Implements Timezone_Port using tzif library
+- `Console_Writer` - Implements Writer_Port using Ada.Text_IO
+- Mock adapters for testing
 
 ---
 
-## 3. Domain Type Design
+## 3. Package Structure
 
-### 3.1 Three DateTime Kinds
-
-Zoneinfo provides three distinct datetime representations:
-
-| Type | Purpose | Timezone Awareness |
-|------|---------|-------------------|
-| **Instant** | Absolute moment in time | None (epoch-based) |
-| **Zoned** | Instant with timezone context | Full |
-| **Civil** | Calendar components | None (timezone-blind) |
-
-### 3.2 Conversion Rules
-
-```
-Instant ──────────────────► Zoned (add zone)
-   ▲                           │
-   │ (extract)                 │
-   └───────────────────────────┘
-                               │
-                               ▼ (always succeeds)
-                            Civil
-                               │
-                               ▼ (may fail: DST gaps/overlaps)
-                            Zoned
-```
-
-| Conversion | Always Succeeds? | Failure Mode |
-|------------|------------------|--------------|
-| Instant → Zoned | Yes | N/A |
-| Zoned → Instant | Yes | N/A |
-| Zoned → Civil | Yes | N/A |
-| Civil → Zoned | **No** | Ambiguous_Time_Error, Gap_Time_Error |
-
-### 3.3 Equality Semantics
-
-| Comparison | Semantics |
-|------------|-----------|
-| Instant = Instant | Same epoch nanoseconds |
-| Zoned = Zoned | Same Instant AND same Zone_ID |
-| Civil = Civil | Same calendar components |
-| Duration = Duration | Same seconds and nanoseconds |
-
-**Important:** Two Zoned values representing the same instant but in different timezones are **NOT equal**:
-```ada
-NYC_Noon  : Zoned := ...;  -- 2025-12-03T12:00:00 America/New_York
-LA_9AM    : Zoned := ...;  -- 2025-12-03T09:00:00 America/Los_Angeles
--- Same instant, but NYC_Noon /= LA_9AM
--- To compare instants: To_Instant(NYC_Noon) = To_Instant(LA_9AM)
-```
-
----
-
-## 4. Package Structure
-
-### 4.1 Directory Layout
+### 3.1 Directory Layout
 
 ```
 src/
-├── zoneinfo.ads                    # Root package
+├── zoneinfo.ads                        # Root package
+├── version/
+│   └── zoneinfo-version.ads            # Version information
 │
-├── domain/
-│   ├── domain.ads                  # Domain layer root
-│   ├── error/
-│   │   ├── domain-error.ads        # Error type definition
-│   │   └── result/
-│   │       └── domain-error-result.ads  # Generic Result monad
-│   ├── unit/
-│   │   └── domain-unit.ads         # Unit type (void equivalent)
-│   └── value_object/
-│       ├── instant/
-│       │   └── domain-value_object-instant.ads
-│       ├── zoned/
-│       │   └── domain-value_object-zoned.ads
-│       ├── civil/
-│       │   └── domain-value_object-civil.ads
-│       ├── duration_type/
-│       │   └── domain-value_object-duration_type.ads
-│       └── zone_id/
-│           └── domain-value_object-zone_id.ads
+├── domain/                              # Domain Layer (SPARK On)
+│   ├── domain.ads                       # Root domain package
+│   ├── domain-unit.ads                  # Unit type (void equivalent)
+│   ├── types/
+│   │   ├── domain-types.ads             # Type utilities
+│   │   └── domain-types-option.ads      # Option monad
+│   ├── value_object/
+│   │   ├── domain-value_object.ads
+│   │   ├── domain-value_object-instant.ads
+│   │   ├── domain-value_object-zoned.ads
+│   │   ├── domain-value_object-civil.ads
+│   │   ├── domain-value_object-duration_type.ads
+│   │   ├── domain-value_object-zone_id.ads
+│   │   └── domain-value_object-source_info.ads
+│   └── error/
+│       ├── domain-error.ads             # Error types
+│       ├── domain-error-result.ads      # Result monad
+│       └── domain-error-unit_result.ads # Result[Unit]
 │
-├── application/
-│   ├── application.ads             # Application layer root
+├── application/                         # Application Layer (SPARK On)
+│   ├── application.ads
+│   ├── command/
+│   │   └── application-command.ads      # Command pattern types
 │   ├── port/
-│   │   ├── clock_port/
-│   │   │   └── application-port-clock_port.ads
-│   │   └── timezone_port/
-│   │       └── application-port-timezone_port.ads
+│   │   ├── application-port.ads
+│   │   ├── inbound/
+│   │   │   └── application-port-inbound.ads
+│   │   └── outbound/
+│   │       ├── application-port-outbound.ads
+│   │       ├── application-port-outbound-clock.ads
+│   │       ├── application-port-outbound-timezone.ads
+│   │       └── application-port-outbound-writer.ads
 │   └── usecase/
-│       ├── now/
-│       │   └── application-usecase-now.ads
-│       ├── now_zoned/
-│       │   └── application-usecase-now_zoned.ads
-│       ├── now_utc/
-│       │   └── application-usecase-now_utc.ads
-│       └── to_civil/
-│           └── application-usecase-to_civil.ads
+│       ├── application-usecase.ads
+│       ├── application-usecase-get_now.ads
+│       ├── application-usecase-timezone_ops.ads
+│       └── application-usecase-discovery.ads
 │
-├── infrastructure/
-│   ├── infrastructure.ads          # Infrastructure layer root
+├── infrastructure/                      # Infrastructure Layer (SPARK Off)
+│   ├── infrastructure.ads
+│   ├── zoneinfo-tzif_lib.ads            # tzif library binding
 │   └── adapter/
-│       ├── desktop_clock/
-│       │   └── infrastructure-adapter-desktop_clock.ads
-│       ├── stm32f769i_clock/
-│       │   └── infrastructure-adapter-stm32f769i_clock.ads
-│       ├── mock_clock/
-│       │   └── infrastructure-adapter-mock_clock.ads
-│       └── tzif_adapter/
-│           └── infrastructure-adapter-tzif_adapter.ads
+│       ├── infrastructure-adapter.ads
+│       ├── infrastructure-adapter-desktop_clock.ads
+│       ├── infrastructure-adapter-tzif.ads
+│       ├── infrastructure-adapter-console_writer.ads
+│       └── infrastructure-adapter-discovery.ads
 │
-└── api/
-    ├── zoneinfo-api.ads            # Public facade
-    ├── operations/
-    │   └── zoneinfo-api-operations.ads  # SPARK-safe
+└── api/                                 # API Layer (Mixed SPARK)
+    ├── zoneinfo-api.ads                 # Main API facade
     ├── desktop/
     │   └── zoneinfo-api-desktop.ads     # Desktop composition root
+    ├── operations/
+    │   └── zoneinfo-api-operations.ads  # SPARK pure operations
     ├── discovery/
-    │   └── zoneinfo-api-discovery.ads   # TZif source discovery root
-    └── embedded/
-        └── stm32f769i/
-            └── zoneinfo-api-embedded-stm32f769i.ads
+    │   └── zoneinfo-api-discovery.ads   # Timezone discovery
+    ├── format/
+    │   └── zoneinfo-api-format.ads      # ISO 8601 formatting
+    └── parse/
+        └── zoneinfo-api-parse.ads       # Zone_ID parsing
 ```
 
-### 4.2 Package Descriptions
+### 3.2 Package Descriptions by Layer
 
-#### 4.2.1 Domain Layer
+#### 3.2.1 Domain Layer Packages
 
-| Package | Purpose | SPARK |
-|---------|---------|-------|
-| `Domain` | Layer root | On |
-| `Domain.Error` | Error type with Kind + Message | On |
-| `Domain.Error.Result` | Generic Result[T] monad | On |
-| `Domain.Unit` | Unit type for void operations | On |
-| `Domain.Value_Object.Instant` | Epoch-based absolute time | On |
-| `Domain.Value_Object.Zoned` | Instant + Zone_ID | On |
-| `Domain.Value_Object.Civil` | Calendar components | On |
-| `Domain.Value_Object.Duration_Type` | Time span | On |
-| `Domain.Value_Object.Zone_ID` | IANA timezone identifier | On |
+| Package | SPARK Mode | Purpose |
+|---------|------------|---------|
+| **Domain** | On | Root domain package |
+| **Domain.Unit** | On | Unit type for Result[void] pattern |
+| **Domain.Types** | On | Shared type utilities |
+| **Domain.Types.Option** | On | Option monad for optional values |
+| **Domain.Value_Object** | On | Root value object package |
+| **Domain.Value_Object.Instant** | On | Absolute time (epoch nanoseconds) |
+| **Domain.Value_Object.Zoned** | On | Instant with timezone context |
+| **Domain.Value_Object.Civil** | On | Calendar components (timezone-blind) |
+| **Domain.Value_Object.Duration_Type** | On | Time spans (seconds + nanos) |
+| **Domain.Value_Object.Zone_ID** | On | IANA timezone identifiers |
+| **Domain.Value_Object.Source_Info** | On | Timezone data source metadata |
+| **Domain.Error** | On | Error types and Error_Kind enum |
+| **Domain.Error.Result** | On | Result monad for error handling |
+| **Domain.Error.Unit_Result** | On | Result[Unit] for void operations |
 
-#### 4.2.2 Application Layer
+#### 3.2.2 Application Layer Packages
 
-| Package | Purpose | SPARK |
-|---------|---------|-------|
-| `Application` | Layer root | On |
-| `Application.Port.Clock_Port` | Clock signature (generic formal) | On |
-| `Application.Port.Timezone_Port` | Timezone data signature (generic formal) | On |
-| `Application.Usecase.Now` | Get current Instant | On |
-| `Application.Usecase.Now_Zoned` | Get current time in timezone | On |
-| `Application.Usecase.Now_UTC` | Get current UTC time | On |
-| `Application.Usecase.To_Civil` | Convert Zoned to Civil (uses Timezone_Port) | On |
+| Package | SPARK Mode | Purpose |
+|---------|------------|---------|
+| **Application** | On | Root application package |
+| **Application.Command** | On | Command pattern types |
+| **Application.Port** | On | Root port package |
+| **Application.Port.Inbound** | On | Inbound port signatures |
+| **Application.Port.Outbound** | On | Root outbound port package |
+| **Application.Port.Outbound.Clock** | On | Clock port signature (documentation) |
+| **Application.Port.Outbound.Timezone** | On | Timezone port signature (documentation) |
+| **Application.Port.Outbound.Writer** | On | Writer port signature |
+| **Application.UseCase** | On | Root use case package |
+| **Application.UseCase.Get_Now** | On | Current time retrieval use case |
+| **Application.UseCase.Timezone_Ops** | On | Zoned ↔ Civil conversion use case |
+| **Application.UseCase.Discovery** | On | Timezone discovery use case |
 
-#### 4.2.3 Infrastructure Layer
+#### 3.2.3 Infrastructure Layer Packages
 
-| Package | Purpose | SPARK |
-|---------|---------|-------|
-| `Infrastructure` | Layer root | Off |
-| `Infrastructure.Adapter.Desktop_Clock` | Ada.Calendar adapter | Off |
-| `Infrastructure.Adapter.STM32F769I_Clock` | Embedded RTC adapter | Off |
-| `Infrastructure.Adapter.Mock_Clock` | Testing adapter | Off |
-| `Infrastructure.Adapter.Tzif_Adapter` | tzif crate adapter (Timezone_Port) | Off |
+| Package | SPARK Mode | Purpose |
+|---------|------------|---------|
+| **Infrastructure** | Off | Root infrastructure package |
+| **Zoneinfo.Tzif_Lib** | Off | tzif library binding |
+| **Infrastructure.Adapter** | Off | Root adapter package |
+| **Infrastructure.Adapter.Desktop_Clock** | Off | Ada.Calendar clock adapter |
+| **Infrastructure.Adapter.Tzif** | Off | tzif library timezone adapter |
+| **Infrastructure.Adapter.Console_Writer** | Off | Ada.Text_IO output adapter |
+| **Infrastructure.Adapter.Discovery** | Off | Timezone discovery adapter |
 
-#### 4.2.4 API Layer
+#### 3.2.4 API Layer Packages
 
-| Package | Purpose | SPARK |
-|---------|---------|-------|
-| `Zoneinfo` | Library root | Off |
-| `Zoneinfo.API` | Public facade, type re-exports | Off |
-| `Zoneinfo.API.Operations` | SPARK-safe pure operations | On |
-| `Zoneinfo.API.Desktop` | Desktop composition root | Off |
-| `Zoneinfo.API.Discovery` | TZif source discovery and query operations | Off |
-| `Zoneinfo.API.Embedded.STM32F769I` | Embedded composition root | Off |
+| Package | SPARK Mode | Purpose |
+|---------|------------|---------|
+| **Zoneinfo.API** | Off | Public API facade (re-exports Domain types) |
+| **Zoneinfo.API.Desktop** | Off | Default composition root (wires adapters) |
+| **Zoneinfo.API.Operations** | On | SPARK-safe pure operations |
+| **Zoneinfo.API.Discovery** | Off | Timezone discovery facade |
+| **Zoneinfo.API.Format** | Off | ISO 8601 formatting |
+| **Zoneinfo.API.Parse** | Off | Zone_ID parsing |
 
 ---
 
-## 5. Type Definitions
+## 4. Type Definitions
 
-### 5.1 Domain Types
+### 4.1 Domain Types
 
-#### 5.1.1 Instant
-
-```ada
-type Instant is private;
-
---  Construction
-function From_Unix_Epoch (Seconds : Integer_64;
-                          Nanos   : Nanoseconds_Type := 0) return Instant_Result;
-function Now return Instant_Result;  -- Via clock port
-
---  Extraction
-function To_Unix_Epoch (I : Instant) return Unix_Epoch_Type;
-function Epoch_Nanos (I : Instant) return Integer_64;
-
---  Arithmetic
-function Add (I : Instant; D : Duration_Type) return Instant_Result;
-function Subtract (I : Instant; D : Duration_Type) return Instant_Result;
-function Diff (A, B : Instant) return Duration_Type;
-
---  Comparison
-function "=" (A, B : Instant) return Boolean;
-function "<" (A, B : Instant) return Boolean;
-```
-
-#### 5.1.2 Zoned
+#### 4.1.1 Instant
 
 ```ada
-type Zoned is private;
-
---  Construction
-function Create (I : Instant; Zone : Zone_ID) return Zoned;
-
---  Extraction (Domain layer - no tzif dependency)
-function To_Instant (Z : Zoned) return Instant;
-function Get_Zone (Z : Zoned) return Zone_ID;
-
---  Timezone change (preserves instant)
-function With_Zone (Z : Zoned; New_Zone : Zone_ID) return Zoned;
-
---  Comparison (both Instant AND Zone must match)
-function "=" (A, B : Zoned) return Boolean;
-
---  NOTE: To_Civil is NOT in Domain layer.
---  It requires timezone data from tzif via Timezone_Port.
---  See Application.Port.Timezone_Port for To_Civil.
-```
-
-#### 5.1.3 Civil
-
-```ada
-type Civil is private;
-
---  Construction
-function Create (Year   : Year_Number;
-                 Month  : Month_Number;
-                 Day    : Day_Number;
-                 Hour   : Hour_Number   := 0;
-                 Minute : Minute_Number := 0;
-                 Second : Second_Number := 0;
-                 Nano   : Nanoseconds_Type := 0) return Civil_Result;
-
---  Extraction
-function Get_Year (C : Civil) return Year_Number;
-function Get_Month (C : Civil) return Month_Number;
-function Get_Day (C : Civil) return Day_Number;
-function Get_Hour (C : Civil) return Hour_Number;
-function Get_Minute (C : Civil) return Minute_Number;
-function Get_Second (C : Civil) return Second_Number;
-function Get_Nanosecond (C : Civil) return Nanoseconds_Type;
-
---  Conversion (may fail for DST gaps/overlaps)
-function To_Zoned (C : Civil; Zone : Zone_ID) return Zoned_Result;
-```
-
-#### 5.1.4 Duration_Type
-
-```ada
-type Duration_Type is private;
-
---  Construction
-function From_Seconds (S : Integer_64) return Duration_Type;
-function From_Millis (Ms : Integer_64) return Duration_Type;
-function From_Nanos (Ns : Integer_64) return Duration_Type;
-
---  Extraction
-function Seconds (D : Duration_Type) return Integer_64;
-function Nanoseconds (D : Duration_Type) return Nanoseconds_Type;
-function To_Nanos (D : Duration_Type) return Integer_64;
-
---  Arithmetic
-function Add (A, B : Duration_Type) return Duration_Type;
-function Negate (D : Duration_Type) return Duration_Type;
-function Is_Negative (D : Duration_Type) return Boolean;
-```
-
-#### 5.1.5 Zone_ID
-
-```ada
-type Zone_ID is private;
-
---  Constants
-UTC : constant Zone_ID;
-
---  Construction
-function From_String (Name : String) return Zone_ID_Result;
-
---  Extraction
-function To_String (Z : Zone_ID) return String;
-function Is_UTC (Z : Zone_ID) return Boolean;
-```
-
-#### 5.1.6 Error Types
-
-```ada
-type Error_Kind is
-  (Validation_Error,      -- Input validation failed
-   Timezone_Error,        -- Invalid or unknown timezone
-   Overflow_Error,        -- Arithmetic overflow
-   Ambiguous_Time_Error,  -- DST overlap (multiple instants)
-   Gap_Time_Error,        -- DST gap (no valid instant)
-   IO_Error,              -- I/O operation failed
-   Internal_Error);       -- Unexpected internal error
-
-type Error_Type is record
-   Kind    : Error_Kind;
-   Message : Error_String;  -- Bounded string
+type Instant is record
+   Epoch_Nanos : Integer_64;
 end record;
 ```
 
-### 5.2 Application Types
+**Purpose**: Represents an absolute moment in time as nanoseconds since Unix epoch (1970-01-01 00:00:00 UTC).
 
-#### 5.2.1 Clock_Port Signature
+**Invariants**:
+- None (all Integer_64 values are valid)
+- Range: approximately ±292 years from epoch
+
+**Operations**:
+- Construction: `From_Unix_Epoch (Seconds, Nanos)`, `From_Epoch_Nanos`
+- Arithmetic: `Add`, `Subtract`, `Diff` (with Duration)
+- Comparison: `=`, `<`, `<=`, `>`, `>=`
+- Conversion: `To_Unix_Epoch` (returns seconds + nanos record)
+
+#### 4.1.2 Zoned
 
 ```ada
---  Generic formal package defining time source contract
-generic
-   with function Now return Instant_Result is <>;
-   with function Now_Monotonic return Monotonic_Result is <>;
-package Clock_Port is
-   --  Re-export for convenience
-   function Get_Now return Instant_Result renames Now;
-end Clock_Port;
+type Zoned is record
+   Instant_Value : Instant;
+   Zone          : Zone_ID;
+end record;
 ```
 
-#### 5.2.2 Timezone_Port Signature
+**Purpose**: Represents an Instant with timezone context. Does NOT cache UTC offset.
 
-**Design Decision: tzif as Single Source of Truth**
+**Invariants**:
+- Zone must be a valid Zone_ID
+- tzif is queried for all timezone calculations (no caching)
 
-All timezone data operations (UTC offset lookup, Civil conversion, DST handling) go through the Timezone_Port, which is implemented by a Tzif_Adapter backed by the tzif crate. This ensures:
+**Operations**:
+- Construction: `Create (Instant, Zone_ID)`
+- Accessors: `To_Instant`, `Get_Zone`
+- Timezone change: `With_Zone (New_Zone)` (preserves Instant)
+- Comparison: `=` (requires same Instant AND Zone), `<` (based on Instant)
 
-1. **Single source of truth** - tzif database is authoritative for all timezone data
-2. **No cached offsets** - Zoned does not cache UTC offsets; they're computed on demand
-3. **Consistent DST handling** - All gap/overlap detection uses tzif
-4. **Pure Domain layer** - Domain types have zero external dependencies
+**Design Decision**: No cached UTC offset ensures tzif remains single source of truth for all timezone data.
+
+#### 4.1.3 Civil
 
 ```ada
---  Generic formal package defining timezone data contract
-generic
-   --  Get UTC offset for an instant in a timezone (seconds east of UTC)
-   with function Get_UTC_Offset
-     (I : Instant; Zone : Zone_ID) return Offset_Result is <>;
-
-   --  Convert Zoned to Civil (always succeeds - instant + offset → calendar)
-   with function To_Civil (Z : Zoned) return Civil is <>;
-
-   --  Convert Civil to Zoned (may fail: DST gaps/overlaps)
-   with function To_Zoned
-     (C : Civil; Zone : Zone_ID) return Zoned_Result is <>;
-
-   --  Validate timezone identifier against tzif database
-   with function Is_Valid_Zone (Zone : Zone_ID) return Boolean is <>;
-
-package Timezone_Port is
-   --  Re-exports for convenience
-end Timezone_Port;
+type Civil is record
+   Year       : Year_Number;        -- 1..9999
+   Month      : Month_Number;       -- 1..12
+   Day        : Day_Number;         -- 1..31
+   Hour       : Hour_Number;        -- 0..23
+   Minute     : Minute_Number;      -- 0..59
+   Second     : Second_Number;      -- 0..59
+   Nanosecond : Nanosecond_Number;  -- 0..999_999_999
+end record;
 ```
 
-**Implementation:** `Infrastructure.Adapter.Tzif_Adapter` implements Timezone_Port using the tzif crate.
+**Purpose**: Represents timezone-blind calendar components (wall-clock time).
 
-### 5.3 API Types
+**Invariants**:
+- All components must be in range
+- Day must be valid for given month/year (leap year aware)
+- No leap second support (Second max is 59)
 
-All public types are re-exported from `Zoneinfo.API`:
+**Operations**:
+- Construction: `Create (Year, Month, Day, Hour, Minute, Second, Nanosecond)`
+- Accessors: `Get_Year`, `Get_Month`, `Get_Day`, `Get_Hour`, `Get_Minute`, `Get_Second`, `Get_Nanosecond`
+- Queries: `Is_Leap_Year`, `Days_In_Month`
+- Comparison: `=`, `<`, `<=`, `>`, `>=` (chronological)
+
+**Ambiguity**: Civil times are ambiguous without timezone context:
+- DST gap: Civil time may not exist (spring-forward)
+- DST overlap: Civil time may occur twice (fall-back)
+
+#### 4.1.4 Duration_Type
 
 ```ada
---  Domain types
+type Duration_Type is record
+   Seconds     : Integer_64;
+   Nanoseconds : Nanoseconds_Range;  -- 0..999_999_999
+end record;
+```
+
+**Purpose**: Represents a time span with nanosecond precision.
+
+**Invariants**:
+- Nanoseconds must be in range 0..999_999_999
+- Sign is carried by Seconds field (negative durations allowed)
+
+**Operations**:
+- Construction: `From_Seconds`, `From_Milliseconds`, `From_Nanoseconds`
+- Arithmetic: `Add`, `Subtract`, `Negate`, `Abs`
+- Comparison: `=`, `<`, `<=`, `>`, `>=`
+- Conversion: `To_Seconds`, `To_Milliseconds`, `To_Nanoseconds`
+
+#### 4.1.5 Zone_ID
+
+```ada
+type Zone_ID is record
+   Id : Bounded_String_63;  -- IANA timezone identifier
+end record;
+```
+
+**Purpose**: Represents an IANA timezone identifier (e.g., "America/New_York", "UTC").
+
+**Invariants**:
+- Max length: 63 characters (bounded string)
+- Content: IANA timezone database identifier
+- Validity checked by tzif on use
+
+**Operations**:
+- Construction: `From_String (Str)` (returns Result)
+- Constants: `UTC` (pre-defined)
+- Accessors: `To_String`
+- Comparison: `=`
+
+#### 4.1.6 Error_Type
+
+```ada
+type Error_Type is record
+   Kind    : Error_Kind;
+   Message : Bounded_String_255;
+end record;
+
+type Error_Kind is
+  (Validation_Error,      -- Invalid input parameters
+   Timezone_Error,        -- Invalid Zone_ID
+   Overflow_Error,        -- Arithmetic overflow
+   Ambiguous_Time_Error,  -- DST fall-back overlap
+   Gap_Time_Error,        -- DST spring-forward gap
+   IO_Error,              -- I/O failure
+   Internal_Error);       -- Unexpected system state
+```
+
+**Purpose**: Represents all error conditions in the library.
+
+**Design**: Error_Kind enables pattern matching, Message provides context.
+
+### 4.2 Application Types
+
+#### 4.2.1 Port Signatures
+
+**Clock_Port**:
+```ada
+--  Signature (defined via generic formal parameters):
+--  function Now return Instant_Result.Result;
+```
+
+**Timezone_Port**:
+```ada
+--  Signature (defined via generic formal parameters):
+--  function To_Civil (I : Instant; Zone : Zone_ID) return Civil;
+--  function To_Instant (C : Civil; Zone : Zone_ID) return Instant_Result.Result;
+--  function Is_Valid_Zone (Zone : Zone_ID) return Boolean;
+--  function Get_UTC_Offset (I : Instant; Zone : Zone_ID) return Duration_Type;
+```
+
+**Writer_Port**:
+```ada
+--  Signature (defined via generic formal parameters):
+--  procedure Put_Line (Msg : String);
+```
+
+### 4.3 API Types
+
+The API layer does not define new types. It re-exports Domain types for public consumption:
+
+```ada
+--  Zoneinfo.API
 subtype Instant is Domain.Value_Object.Instant.Instant;
 subtype Zoned is Domain.Value_Object.Zoned.Zoned;
 subtype Civil is Domain.Value_Object.Civil.Civil;
 subtype Duration_Type is Domain.Value_Object.Duration_Type.Duration_Type;
 subtype Zone_ID is Domain.Value_Object.Zone_ID.Zone_ID;
+subtype Error_Type is Domain.Error.Error_Type;
 
---  Result types
-subtype Instant_Result is Domain.Value_Object.Instant.Instant_Result.Result;
-subtype Zoned_Result is Domain.Value_Object.Zoned.Zoned_Result.Result;
---  etc.
-
---  Constants
-UTC : Zone_ID renames Domain.Value_Object.Zone_ID.UTC;
+package Instant_Result renames Domain.Value_Object.Instant.Instant_Result;
+package Zoned_Result renames Domain.Value_Object.Zoned.Zoned_Result;
+--  ... etc.
 ```
 
 ---
 
-## 6. Pluggable Clock Port Pattern
+## 5. Design Patterns
 
-### 6.1 Overview
+### 5.1 Static Dependency Injection via Generics
 
-The Clock Port pattern enables pluggable time sources via Ada generics:
+**Problem**: Application layer needs clock and timezone functionality without depending on Infrastructure.
 
+**Solution**: Generic signature packages define required interfaces; API layer instantiates with concrete adapters.
+
+**Example**:
 ```ada
---  1. Port defines generic signature (Application layer)
+--  Application layer defines WHAT is needed
 generic
-   with function Now return Instant_Result is <>;
-package Application.Port.Clock_Port is ...
+   with function Now return Instant_Result.Result;
+package Application.UseCase.Get_Now is
+   function Execute return Instant_Result.Result;
+end Application.UseCase.Get_Now;
 
---  2. Use case is generic, parameterized by Clock_Port
-generic
-   with package Clock is new Clock_Port (<>);
-package Application.Usecase.Now_Zoned is
-   function Execute (Zone : Zone_ID) return Zoned_Result;
-end Now_Zoned;
+--  Infrastructure layer provides HOW
+package body Infrastructure.Adapter.Desktop_Clock is
+   function Now return Instant_Result.Result is ... end Now;
+end Infrastructure.Adapter.Desktop_Clock;
 
---  3. Composition root instantiates with concrete adapter
-package Desktop_Clock_Port is new Clock_Port
+--  API layer wires them together
+package Get_Now_UC is new Application.UseCase.Get_Now
   (Now => Infrastructure.Adapter.Desktop_Clock.Now);
-
-package Desktop_Now_Zoned is new Application.Usecase.Now_Zoned
-  (Clock => Desktop_Clock_Port);
 ```
 
-### 6.2 Benefits
+**Benefits**:
+- Compile-time dependency injection (no runtime overhead)
+- Type-safe interface contracts
+- Testability via mock adapters
+- SPARK-compatible design
 
-| Benefit | Description |
-|---------|-------------|
-| Zero runtime overhead | Monomorphization at compile time |
-| SPARK compatible | No runtime dispatching |
-| Platform flexibility | Same use cases, different clock sources |
-| Testable | Mock_Clock for deterministic tests |
-| Embedded-friendly | No vtables, no heap |
+### 5.2 Three-Package API Pattern
 
-### 6.3 Clock Adapters
+**Structure**:
+1. **Zoneinfo.API** - Re-exports Domain types
+2. **Zoneinfo.API.Desktop** - Composition root (wires adapters to use cases)
+3. **Zoneinfo.API.Operations** - SPARK-safe pure operations
 
-| Adapter | Platform | Time Source |
-|---------|----------|-------------|
-| Desktop_Clock | Desktop/Server | Ada.Calendar, Ada.Real_Time |
-| STM32F769I_Clock | Embedded | RTC registers, SysTick |
-| Mock_Clock | Testing | Fixed/controllable time |
+**Benefits**:
+- Clean public interface (users only `with Zoneinfo.API`)
+- Platform-specific composition roots (API.Desktop, API.Embedded.*)
+- SPARK-safe subset available (API.Operations)
 
----
+### 5.3 Result Monad for Error Handling
 
-## 7. Three-Package API Pattern
+**Problem**: No exceptions in Domain/Application layers, but operations can fail.
 
-### 7.1 Structure
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      User Code                               │
-│   with Zoneinfo.API.Desktop;                                │
-│   Result := API.Desktop.Now_UTC;                            │
-└────────────────────────────┬────────────────────────────────┘
-                             │
-┌────────────────────────────▼────────────────────────────────┐
-│               Zoneinfo.API.Desktop                          │
-│               (Composition Root)                             │
-│  - Wires Desktop_Clock adapter                              │
-│  - Instantiates use cases                                   │
-│  - SPARK_Mode: Off (I/O wiring)                            │
-└────────────────────────────┬────────────────────────────────┘
-                             │ instantiates
-┌────────────────────────────▼────────────────────────────────┐
-│            Zoneinfo.API.Operations                          │
-│            (SPARK-Safe Operations)                           │
-│  - Pure computation (Add, Diff, To_Civil, etc.)            │
-│  - No clock dependency                                       │
-│  - SPARK_Mode: On (formally verifiable)                    │
-└─────────────────────────────────────────────────────────────┘
+**Solution**: All fallible operations return `Result[T]` where Result is:
+```ada
+type Result (Is_Ok : Boolean := False) is record
+   case Is_Ok is
+      when True  => Value : T;
+      when False => Error : Error_Type;
+   end case;
+end record;
 ```
 
-### 7.2 SPARK Verification Boundary
+**Usage**:
+```ada
+--  Create and check
+Zone_Result := Zone_ID.From_String ("America/New_York");
+if Zone_ID_Result.Is_Ok (Zone_Result) then
+   Zone := Zone_ID_Result.Value (Zone_Result);
+else
+   Error := Zone_ID_Result.Error (Zone_Result);
+end if;
 
-| Package | SPARK_Mode | Reason |
-|---------|------------|--------|
-| Domain.* | On | Pure domain logic |
-| Application.* | On | Business logic |
-| API.Operations | On | Pure computation |
-| API.Desktop | Off | I/O wiring |
-| API.Embedded.* | Off | Hardware I/O |
-| Infrastructure.* | Off | I/O operations |
+--  Railway-oriented programming (bind operations)
+Result := Instant.From_Unix_Epoch (Seconds, Nanos)
+  .And_Then (lambda (I) => Instant.Add (I, Duration));
+```
 
-### 7.3 Platform-Specific Composition Roots
+### 5.4 Value Object Pattern
 
-| Platform | Composition Root | Clock Adapter |
-|----------|------------------|---------------|
-| Desktop | `API.Desktop` | Desktop_Clock |
-| STM32F769I | `API.Embedded.STM32F769I` | STM32F769I_Clock |
-| Testing | (via Mock_Clock instantiation) | Mock_Clock |
+**All domain types are value objects**:
+- Immutable after creation
+- Equality based on values, not identity
+- No setters (only constructors and "with" operations)
+- Passed by value (small records)
 
----
+**Example**:
+```ada
+--  Immutable: Cannot modify fields
+I1 : constant Instant := Instant.From_Epoch_Nanos (1000);
 
-## 8. Error Handling Strategy
+--  "With" operations create new values
+Z1 : constant Zoned := Zoned.Create (I1, NY_Zone);
+Z2 : constant Zoned := Zoned.With_Zone (Z1, London_Zone);
+--  Z1 unchanged, Z2 is new value
+```
 
-### 8.1 Result Monad Pattern
+### 5.5 Port and Adapter (Hexagonal Architecture)
 
-All fallible operations return `Result[T]`:
+**Ports** (Application layer):
+- Define WHAT the application needs (interface)
+- Signature packages (generic formal parameters)
+- Technology-agnostic
+
+**Adapters** (Infrastructure layer):
+- Provide HOW to fulfill the need (implementation)
+- Concrete packages implementing port signatures
+- Technology-specific (Ada.Calendar, tzif, etc.)
+
+**Composition** (API layer):
+- Wires adapters to ports at compile time
+- Static dispatch (no runtime polymorphism)
+
+### 5.6 Functional.Try for Exception Boundaries
+
+**Problem**: Infrastructure adapters use Ada standard library (Ada.Calendar, Ada.Text_IO) which raises exceptions.
+
+**Solution**: All Infrastructure operations wrapped in Functional.Try:
 
 ```ada
-function Now_Zoned (Zone : Zone_ID) return Zoned_Result;
---  Returns Ok(Zoned) or Error(Timezone_Error, "message")
+--  From global CLAUDE.md rule:
+with Functional.Try;
 
-function To_Zoned (C : Civil; Zone : Zone_ID) return Zoned_Result;
---  Returns Ok(Zoned) or Error(Ambiguous_Time_Error, "message")
---  or Error(Gap_Time_Error, "message")
+function Risky_Action (Param : Param_Type) return T;
+
+function Map_Exception
+  (Exc : Exception_Occurrence) return Domain.Error.Error_Type;
+
+function Safe_Action is new
+  Functional.Try.Try_To_Result_With_Param
+    (T             => Result_Type,
+     E             => Domain.Error.Error_Type,
+     Param         => Param_Type,
+     Result_Pkg    => My_Result_Package,
+     Map_Exception => Map_Exception,
+     Action        => Risky_Action);
+
+--  Public API calls safe wrapper
+function Public_Operation (P : Param_Type) return Result is
+begin
+   return Safe_Action (P);
+end Public_Operation;
 ```
 
-### 8.2 DST Error Handling
-
-| Scenario | Error | Resolution Options |
-|----------|-------|-------------------|
-| DST Gap | Gap_Time_Error | Adjust forward, reject |
-| DST Overlap | Ambiguous_Time_Error | Choose earlier/later, reject |
-
-### 8.3 No Exceptions Policy
-
-| Situation | Handling |
-|-----------|----------|
-| Invalid timezone | Return Timezone_Error result |
-| DST gap | Return Gap_Time_Error result |
-| DST overlap | Return Ambiguous_Time_Error result |
-| Arithmetic overflow | Return Overflow_Error result |
-| I/O failure | Return IO_Error result |
-| Programmer error | Assert/raise (debug only) |
+**Benefits**:
+- NO manual exception handlers in Infrastructure
+- Consistent exception → Domain.Error mapping
+- Auditability (single exception boundary mechanism)
 
 ---
 
-## 9. Build Configuration
+## 6. Error Handling Strategy
 
-### 9.1 GPR Projects
+### 6.1 No Exceptions Policy
 
-| Project | Purpose |
-|---------|---------|
-| `zoneinfo.gpr` | Public library (restricted interfaces) |
-| `zoneinfo_internal.gpr` | Internal (unrestricted, for tests) |
+**Domain and Application layers**:
+- MUST NOT raise exceptions
+- All operations return Result[T] or success type
+- SPARK-compatible error handling
 
-### 9.2 Build Profiles
+**Infrastructure layer**:
+- MAY raise exceptions (uses Ada standard library)
+- ALL exceptions MUST be caught at adapter boundary using Functional.Try
+- Converted to Domain.Error.Error_Type before returning to Application
 
-| Profile | Target | Features |
-|---------|--------|----------|
-| `standard` | Desktop/server | Full features, Desktop_Clock |
-| `embedded` | Ravenscar embedded | STM32F769I_Clock |
-| `baremetal` | Zero footprint | Minimal runtime |
+**API layer**:
+- Re-exports Result types
+- No new exceptions introduced
 
----
+### 6.2 Error Propagation
 
-## 10. Design Decisions
-
-### 10.1 Three DateTime Kinds
-
-**Decision:** Instant, Zoned, Civil instead of a single DateTime type
-
-**Rationale:**
-- Clear semantics for each use case
-- Prevents timezone confusion bugs
-- Explicit conversions make intent clear
-- Matches modern datetime library design (Java 8+, Rust chrono)
-
-### 10.2 Duration as Record
-
-**Decision:** Duration_Type as `(Seconds : Integer_64; Nanoseconds : Nanoseconds_Type)` instead of subtype of Ada.Calendar.Duration
-
-**Rationale:**
-- Loose coupling to Ada.Calendar
-- Works in embedded (no Ada.Calendar)
-- SPARK compatible
-- Explicit nanosecond precision
-
-### 10.3 Zoned Equality
-
-**Decision:** Zoned equality requires same Instant AND same Zone_ID
-
-**Rationale:**
-- Preserves timezone context
-- Prevents subtle bugs when comparing times
-- Use To_Instant for pure temporal comparison
-
-### 10.4 Result/Option Copying
-
-**Decision:** Copy Result/Option from functional crate into Domain layer
-
-**Rationale:**
-- Loose coupling (no runtime dependency)
-- Domain layer remains independent
-- Easier SPARK verification
-- Follows architecture agent guidance
-
-### 10.5 Clock Port as Generic Formal
-
-**Decision:** Generic formal package instead of tagged type interface
-
-**Rationale:**
-- SPARK compatible (no dispatching)
-- Zero runtime overhead
-- Compile-time binding
-- Embedded-friendly (no vtables)
-
-### 10.6 ISO 8601 Format Buffer Constraints
-
-**Decision:** ISO 8601 datetime formatting uses UTC offset "Z" form to guarantee buffer safety.
-
-**Rationale:**
-- All Zoned values represent absolute moments in time (Instant + Zone context)
-- UTC offset "Z" form (1 char) vs expanded form "+HH:MM" (6 chars) saves 5 chars
-- Guarantees Zone_ID (max 64 chars) fits in Datetime_String buffer (96 chars)
-- Fixed overhead with Z form = 32 chars, leaving exactly 64 chars for zone name
-- SPARK-provable bounds: `Zone_ID_Length + 32 <= Max_Datetime_Length`
-
-**Buffer Analysis:**
-```
-Component              Z-Form    Expanded Form
-─────────────────────────────────────────────
-Date (YYYY-MM-DD)      10 chars  10 chars
-T separator            1 char    1 char
-Time (HH:MM:SS)        8 chars   8 chars
-Nanos (.999999999)     10 chars  10 chars
-Offset                 1 char    6 chars
-Zone brackets ([])     2 chars   2 chars
-─────────────────────────────────────────────
-Fixed overhead         32 chars  37 chars
-Max Zone_ID            64 chars  59 chars
-Total                  96 chars  96 chars
-```
-
-**Constraint:**
-- Format API functions (`To_ISO_8601_With_Offset`, `To_ISO_8601_Full`) produce "Z" for UTC offset
-- Precondition on `To_ISO_8601_Full`: `Offset = Duration_Type.Zero OR Zone_ID_Length <= 59`
-- This ensures SPARK can prove `To_Bounded_String` never raises `Constraint_Error`
-
-**Design Implication:**
-Applications requiring non-UTC offset display with near-max-length Zone_IDs (>59 chars) would need a larger buffer. Since real IANA zone IDs are ~35 chars max, this constraint has no practical impact.
-
-### 10.7 External Library Name Shadowing Pattern
-
-**Problem:**
-When a local package name matches the root of an external library (e.g., `Infrastructure.Adapter.Tzif` vs the external `TZif` crate), Ada's visibility rules cause the local package to shadow the external library inside that package body. Direct references like `TZif.Domain.Value_Object` become ambiguous or point to the wrong unit.
-
-**Solution: Library-Unit Renaming Alias**
-
-Create a *library-level renaming unit* inside your crate that aliases the external library under an unambiguous name:
-
+**Railway-Oriented Programming**:
 ```ada
---  File: src/zoneinfo-tzif_lib.ads
-pragma Ada_2022;
---  Purpose: Provides an alias for the external TZif library to avoid
---           name shadowing by Infrastructure.Adapter.Tzif
+--  Operation sequence (short-circuits on first error)
+function Process return Result is
+   Zone_Result : Zone_ID_Result.Result;
+   Instant_Result : Instant.Instant_Result.Result;
+   Zoned_Result : Zoned.Zoned_Result.Result;
+begin
+   Zone_Result := Zone_ID.From_String ("America/New_York");
+   if not Zone_ID_Result.Is_Ok (Zone_Result) then
+      return ...;  --  Propagate error
+   end if;
 
-with TZif;
-package Zoneinfo.TZif_Lib renames TZif;
+   Instant_Result := API.Desktop.Now_UTC;
+   if not Instant_Result.Is_Ok (Instant_Result) then
+      return ...;  --  Propagate error
+   end if;
+
+   --  Success path
+   return Zoned.Create (Instant_Result.Value (...), Zone_Result.Value (...));
+end Process;
 ```
 
-Then in the shadowing package, `with` and use the alias:
+### 6.3 Error Context
 
-```ada
---  File: src/infrastructure/adapter/infrastructure-adapter-tzif.adb
-with Zoneinfo.TZif_Lib.API;
-with Zoneinfo.TZif_Lib.Domain.Value_Object.Transition_Info;
+All errors include:
+- **Error_Kind**: Enum for pattern matching
+- **Message**: Human-readable description (bounded string)
 
-package body Infrastructure.Adapter.Tzif is
-   package TZif_Api renames Zoneinfo.TZif_Lib.API;
-   -- ...
-end Infrastructure.Adapter.Tzif;
-```
-
-**Why this works:**
-- The renaming unit is compiled at library level, where `TZif` is unambiguous
-- The renamed package `Zoneinfo.TZif_Lib` is a stable alias visible everywhere
-- Inside `Infrastructure.Adapter.Tzif`, the alias has no name collision
-
-**Alternatives considered:**
-
-| Approach | Why It Fails |
-|----------|--------------|
-| `Standard.TZif` | Ada's `Standard` prefix only works for predefined units, not external libraries |
-| `with TZif; package X renames TZif` in body | Package renames inside a body have elaboration/visibility limitations |
-| Rename the adapter | Loses naming consistency (the adapter *is* a TZif adapter) |
-| Rename the external library | Requires modifying the external crate |
-
-**Files using this pattern:**
-- `src/zoneinfo-tzif_lib.ads` - The renaming alias
-- `src/infrastructure/adapter/infrastructure-adapter-tzif.adb` - Uses the alias
+Example messages:
+- "Invalid Zone_ID: 'Invalid/Zone' not found in timezone database"
+- "Overflow in Instant arithmetic: result exceeds Integer_64 range"
+- "Gap time error: 2025-03-09 02:30:00 doesn't exist in America/New_York (DST gap)"
 
 ---
 
-## 11. Appendices
+## 7. Build Configuration
 
-### A. Package Dependency Graph
+### 7.1 GPR Projects
+
+**Main project**: `zoneinfo.gpr`
+- Compiles all source code
+- Exports library interface
+- Dependencies: functional, tzif, gnatcoll
+
+**SPARK project**: `zoneinfo_spark.gpr`
+- Runs SPARK verification on Domain + Application
+- Mode: gnatprove --mode=check (legality only)
+- Infrastructure excluded (SPARK_Mode => Off)
+
+**Test projects**:
+- `test/unit/zoneinfo_unit_tests.gpr` - Unit tests
+- `test/integration/zoneinfo_integration_tests.gpr` - Integration tests
+
+### 7.2 Build Profiles
+
+| Profile | Purpose | Flags |
+|---------|---------|-------|
+| **development** | Development builds | `-g`, `-O0`, assertions on |
+| **release** | Production builds | `-O2`, assertions off |
+| **validation** | Test builds | `-O1`, coverage enabled |
+
+**Alire configuration**:
+```toml
+[build-switches]
+"*".Ada_Version = "Ada2022"
+"*".Style_Checks = "yes"
+```
+
+---
+
+## 8. Design Decisions
+
+### 8.1 Why No Cached UTC Offset in Zoned?
+
+**Decision**: Zoned does NOT cache UTC offset; all timezone queries go through Timezone_Port → tzif.
+
+**Rationale**:
+- **Single source of truth**: tzif is authoritative for all timezone data
+- **Simplicity**: No cache invalidation logic needed
+- **Correctness**: Eliminates risk of stale offset data
+- **Performance**: Timezone conversions delegated to tzif (already optimized)
+
+**Trade-off**: Extra indirection for Civil conversions (acceptable for correctness).
+
+### 8.2 Why Static Dependency Injection (Generics)?
+
+**Decision**: Use Ada generics for dependency injection instead of runtime polymorphism (tagged types).
+
+**Rationale**:
+- **SPARK compatibility**: Generics work in SPARK, tagged types have limitations
+- **Performance**: Static dispatch (zero runtime overhead)
+- **Type safety**: Compile-time interface verification
+- **Simplicity**: No dynamic dispatch complexity
+
+**Trade-off**: More verbose generic instantiations (acceptable for correctness and performance).
+
+### 8.3 Why Separate API.Operations?
+
+**Decision**: Provide API.Operations as a SPARK-safe pure operations package.
+
+**Rationale**:
+- **SPARK users**: Need provable operations without Infrastructure dependencies
+- **Subset principle**: SPARK-safe subset of full API
+- **Formal verification**: API.Operations can be fully proven
+
+**Usage**: SPARK-critical code uses API.Operations; general code uses API.Desktop.
+
+### 8.4 Why Bounded Strings Everywhere?
+
+**Decision**: All strings use GNATCOLL.Strings.Bounded_String (no unbounded strings).
+
+**Rationale**:
+- **Embedded compatibility**: No heap allocation
+- **SPARK compatibility**: Bounded types provable
+- **Predictability**: Compile-time size limits
+- **Safety**: No dynamic allocation failures
+
+**Trade-off**: String length limits (63 for Zone_ID, 255 for errors) - acceptable for use cases.
+
+### 8.5 Why Three Datetime Types?
+
+**Decision**: Provide three distinct types (Instant, Zoned, Civil) instead of one unified type.
+
+**Rationale**:
+- **Type safety**: Prevents mixing timezone-aware and timezone-blind times
+- **Explicitness**: Forces developers to think about timezone context
+- **Correctness**: Compiler catches timezone misuse errors
+- **DDD principle**: Each type models a distinct concept
+
+**Example error prevented**:
+```ada
+--  Compiler error: Cannot mix Instant and Civil
+I : Instant := ...;
+C : Civil := ...;
+if I = C then ...  --  TYPE ERROR (good!)
+```
+
+### 8.6 Why Result Monad Instead of Exceptions?
+
+**Decision**: Use Result[T] monad for all error handling in Domain/Application layers.
+
+**Rationale**:
+- **SPARK compatibility**: Exceptions not allowed in SPARK
+- **Explicitness**: Errors are part of type signature (forces handling)
+- **Composability**: Railway-oriented programming patterns
+- **No control flow via exceptions**: Errors are values, not control flow
+
+**Trade-off**: More verbose error handling code (acceptable for correctness).
+
+---
+
+## 9. Appendices
+
+### Appendix A: Package Dependency Graph
 
 ```
 Zoneinfo.API.Desktop
-    ├── Infrastructure.Adapter.Desktop_Clock
-    │       └── Application.Port.Clock_Port
-    │               └── Domain.Value_Object.Instant
-    │                       └── Domain.Error.Result
-    │                               └── Domain.Error
     │
-    ├── Application.Usecase.Now_Zoned
-    │       ├── Application.Port.Clock_Port
-    │       └── Domain.Value_Object.Zoned
-    │               ├── Domain.Value_Object.Instant
-    │               └── Domain.Value_Object.Zone_ID
+    ├─> Zoneinfo.API (re-exports)
+    │       │
+    │       └─> Domain.* (value objects)
     │
-    └── Zoneinfo.API.Operations
-            └── Domain.Value_Object.*
+    ├─> Infrastructure.Adapter.Desktop_Clock
+    │       │
+    │       └─> Application.Port.Outbound.Clock
+    │               │
+    │               └─> Domain.Value_Object.Instant
+    │
+    ├─> Infrastructure.Adapter.Tzif
+    │       │
+    │       ├─> Application.Port.Outbound.Timezone
+    │       │       │
+    │       │       └─> Domain.* (Instant, Civil, Zone_ID, Duration)
+    │       │
+    │       └─> Zoneinfo.Tzif_Lib (external)
+    │
+    └─> Application.UseCase.* (Get_Now, Timezone_Ops, etc.)
+            │
+            └─> Domain.* (value objects)
 ```
 
-### B. External Dependencies
+**Key Observations**:
+- All arrows point inward (toward Domain)
+- Infrastructure depends on Application (ports)
+- API depends on everything (composition root)
+- Domain has ZERO outward dependencies
 
-| Crate | Version | Purpose |
-|-------|---------|---------|
-| functional | ^1.0 | Result/Option source (copied) |
-| tzif | ^1.0 | Timezone data queries |
+### Appendix B: SPARK Verification Strategy
 
-#### Platform Abstraction via tzif
+| Layer | SPARK Mode | Verification Level | Notes |
+|-------|------------|-------------------|-------|
+| **Domain** | On | check | Flow analysis + legality |
+| **Application** | On | check | Flow analysis + legality |
+| **Infrastructure** | Off | N/A | Uses Ada.Calendar, Ada.Text_IO |
+| **API** (facade) | Off | N/A | Re-exports |
+| **API.Operations** | On | prove (future) | Pure operations, no I/O |
 
-Zoneinfo inherits cross-platform support from the tzif library, which provides:
+**Commands**:
+```bash
+make spark-check   # gnatprove --mode=check (current)
+make spark-prove   # gnatprove --mode=prove (future goal)
+```
 
-**POSIX Systems (Linux, macOS, BSD)**:
-- TZif files from `/usr/share/zoneinfo/` (pre-installed)
-- System timezone detection via `/etc/localtime` symlink
+**Current Status** (v1.0.0):
+- Domain + Application: Passes --mode=check
+- API.Operations: Passes --mode=check (prove goal for v2.0)
 
-**Windows (10/Server 2022+)**:
-- Win32 `GetDynamicTimeZoneInformation` API for timezone detection
-- CLDR-based Windows-to-IANA timezone name mapping
-- User-provided path to IANA tzdata directory
+### Appendix C: Change History
 
-The `Infrastructure.Adapter.Tzif_Adapter` delegates all timezone data operations to the tzif crate, which handles platform-specific details transparently.
+| Version | Date | Changes |
+|---------|------|---------|
+| 1.0.0 | 2025-12-15 | Initial release - regenerated from source |
 
-### C. Change History
+---
 
-| Version | Date | Author | Changes |
-|---------|------|--------|---------|
-| 1.0.0 | 2025-12-03 | Michael Gardner | Initial zoneinfo-specific SDS |
+**Document Control:**
+- Version: 1.0.0
+- Last Updated: 2025-12-15
+- Status: Released

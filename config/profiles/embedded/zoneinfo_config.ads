@@ -41,17 +41,21 @@ package Zoneinfo_Config is
    --  Bounded String Configuration
    --  =======================================================================
 
-   --  Maximum length of person names
-   --  Embedded profile: 64 characters (conservative for memory)
-   Max_Name_Length : constant := 64;
-
-   --  Maximum length of greeting messages
-   --  Embedded profile: 128 characters
-   Max_Message_Length : constant := 128;
-
    --  Maximum length of error messages
    --  Embedded profile: 256 characters
    Max_Error_Length : constant := 256;
+
+   --  Maximum length of IANA timezone identifiers (e.g., "America/New_York")
+   --  Fixed size - IANA format constraint
+   Max_Zone_ID_Length : constant := 64;
+
+   --  Maximum length of formatted datetime strings (ISO 8601 with zone)
+   --  Embedded profile: 64 characters (shorter formats)
+   Max_Datetime_Length : constant := 64;
+
+   --  Maximum length of formatted duration strings (ISO 8601)
+   --  Embedded profile: 32 characters
+   Max_Duration_Length : constant := 32;
 
    --  =======================================================================
    --  Discovery Configuration
@@ -68,23 +72,5 @@ package Zoneinfo_Config is
    --  Maximum search paths for source discovery
    --  Embedded profile: 10 paths
    Max_Search_Paths : constant := 10;
-
-   --  Maximum discovered timezone sources
-   --  Embedded profile: 5 sources
-   Max_Sources : constant := 5;
-
-   --  Maximum zone IDs in a list result
-   --  Embedded profile: 100 zones (subset for memory)
-   Max_Zone_Ids : constant := 100;
-
-   --  =======================================================================
-   --  Runtime Configuration
-   --  =======================================================================
-
-   --  Enable assertions and contracts in this profile
-   Enable_Contracts : constant Boolean := True;
-
-   --  Disable debug output for production embedded
-   Enable_Debug : constant Boolean := False;
 
 end Zoneinfo_Config;

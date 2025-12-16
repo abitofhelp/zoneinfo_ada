@@ -12,6 +12,7 @@ with Interfaces;
 with Domain.Value_Object.Civil;
 use Domain.Value_Object.Civil;
 with Domain.Error;
+with Functional.Option;
 
 package body Zoneinfo.API.Parse is
 
@@ -21,53 +22,102 @@ package body Zoneinfo.API.Parse is
    subtype Int64 is Interfaces.Integer_64;
 
    --  ========================================================================
+   --  Option Types for Parse Results
+   --  ========================================================================
+
+   package Int_Option is new Functional.Option (T => Integer);
+   package Int64_Option is new Functional.Option (T => Int64);
+
+   --  ========================================================================
    --  Internal Helper Functions
    --  ========================================================================
 
    function Is_Digit (C : Character) return Boolean is
      (C >= '0' and then C <= '9');
 
-   function Parse_Int (S : String) return Integer is
+   --  ------------------------------------------------------------------------
+   --  Parse_Int - Exception-safe integer parser returning Option
+   --  ------------------------------------------------------------------------
+   --  Validates input before accumulating to avoid overflow exceptions.
+   --  Returns None for empty strings, non-digit characters, or overflow.
+   --  ------------------------------------------------------------------------
+   function Parse_Int (S : String) return Int_Option.Option is
       Result : Integer := 0;
+      Max_Before_Multiply : constant Integer := Integer'Last / 10;
    begin
       if S'Length = 0 then
-         return -1;
+         return Int_Option.None;
       end if;
 
       for I in S'Range loop
          if not Is_Digit (S (I)) then
-            return -1;
+            return Int_Option.None;
          end if;
-         Result := Result * 10 + (Character'Pos (S (I)) - Character'Pos ('0'));
+
+         --  Check for overflow before multiplying
+         if Result > Max_Before_Multiply then
+            return Int_Option.None;
+         end if;
+
+         declare
+            Digit : constant Integer :=
+              Character'Pos (S (I)) - Character'Pos ('0');
+         begin
+            Result := Result * 10;
+            --  Check for overflow before adding
+            if Result > Integer'Last - Digit then
+               return Int_Option.None;
+            end if;
+            Result := Result + Digit;
+         end;
       end loop;
 
-      return Result;
-   exception
-      when Constraint_Error =>
-         return -1;
+      return Int_Option.New_Some (Result);
    end Parse_Int;
 
-   function Parse_Int64 (S : String) return Int64 is
+   --  ------------------------------------------------------------------------
+   --  Parse_Int64 - Exception-safe 64-bit integer parser returning Option
+   --  ------------------------------------------------------------------------
+   --  Validates input before accumulating to avoid overflow exceptions.
+   --  Returns None for empty strings, non-digit characters, or overflow.
+   --  ------------------------------------------------------------------------
+   function Parse_Int64 (S : String) return Int64_Option.Option is
       Result : Int64 := 0;
+      Max_Before_Multiply : constant Int64 := Int64'Last / 10;
    begin
       if S'Length = 0 then
-         return -1;
+         return Int64_Option.None;
       end if;
 
       for I in S'Range loop
          if not Is_Digit (S (I)) then
-            return -1;
+            return Int64_Option.None;
          end if;
-         Result := Result * 10 +
-           Int64 (Character'Pos (S (I)) - Character'Pos ('0'));
+
+         --  Check for overflow before multiplying
+         if Result > Max_Before_Multiply then
+            return Int64_Option.None;
+         end if;
+
+         declare
+            Digit : constant Int64 :=
+              Int64 (Character'Pos (S (I)) - Character'Pos ('0'));
+         begin
+            Result := Result * 10;
+            --  Check for overflow before adding
+            if Result > Int64'Last - Digit then
+               return Int64_Option.None;
+            end if;
+            Result := Result + Digit;
+         end;
       end loop;
 
-      return Result;
-   exception
-      when Constraint_Error =>
-         return -1;
+      return Int64_Option.New_Some (Result);
    end Parse_Int64;
 
+   --  ------------------------------------------------------------------------
+   --  Parse_Nanos - Parse fractional seconds to nanoseconds
+   --  ------------------------------------------------------------------------
    function Parse_Nanos
      (S : String) return Domain.Value_Object.Duration_Type.Nanoseconds_Range
    is
@@ -82,12 +132,20 @@ package body Zoneinfo.API.Parse is
       Padded (1 .. Len) := S (S'First .. S'First + Len - 1);
 
       declare
-         Result : constant Int64 := Parse_Int64 (Padded);
+         Result_Opt : constant Int64_Option.Option := Parse_Int64 (Padded);
       begin
-         if Result < 0 or else Result > 999_999_999 then
+         if Int64_Option.Is_None (Result_Opt) then
             return 0;
          end if;
-         return Nanoseconds_Range (Result);
+
+         declare
+            Result : constant Int64 := Int64_Option.Value (Result_Opt);
+         begin
+            if Result > 999_999_999 then
+               return 0;
+            end if;
+            return Nanoseconds_Range (Result);
+         end;
       end;
    end Parse_Nanos;
 
@@ -109,6 +167,8 @@ package body Zoneinfo.API.Parse is
       T_Pos   : constant Natural := Index (S, 'T');
       Dot_Pos : Natural;
 
+      Year_Opt, Month_Opt, Day_Opt : Int_Option.Option;
+      Hour_Opt, Minute_Opt, Second_Opt : Int_Option.Option;
       Year, Month, Day       : Integer;
       Hour, Minute, Second   : Integer := 0;
       Nanos : Domain.Value_Object.Duration_Type.Nanoseconds_Range := 0;
@@ -123,9 +183,21 @@ package body Zoneinfo.API.Parse is
            (Domain.Error.Validation_Error, "Invalid date format");
       end if;
 
-      Year := Parse_Int (S (S'First .. S'First + 3));
-      Month := Parse_Int (S (S'First + 5 .. S'First + 6));
-      Day := Parse_Int (S (S'First + 8 .. S'First + 9));
+      Year_Opt := Parse_Int (S (S'First .. S'First + 3));
+      Month_Opt := Parse_Int (S (S'First + 5 .. S'First + 6));
+      Day_Opt := Parse_Int (S (S'First + 8 .. S'First + 9));
+
+      if Int_Option.Is_None (Year_Opt)
+         or else Int_Option.Is_None (Month_Opt)
+         or else Int_Option.Is_None (Day_Opt)
+      then
+         return Civil_Result.Error
+           (Domain.Error.Validation_Error, "Invalid date values");
+      end if;
+
+      Year := Int_Option.Value (Year_Opt);
+      Month := Int_Option.Value (Month_Opt);
+      Day := Int_Option.Value (Day_Opt);
 
       if Year < 1 or else Month < 1 or else Month > 12
          or else Day < 1 or else Day > 31
@@ -150,17 +222,26 @@ package body Zoneinfo.API.Parse is
                  (Domain.Error.Validation_Error, "Invalid time format");
             end if;
 
-            Hour := Parse_Int
+            Hour_Opt := Parse_Int
               (Time_Str (Time_Str'First .. Time_Str'First + 1));
-            Minute := Parse_Int
+            Minute_Opt := Parse_Int
               (Time_Str (Time_Str'First + 3 .. Time_Str'First + 4));
-            Second := Parse_Int
+            Second_Opt := Parse_Int
               (Time_Str (Time_Str'First + 6 .. Time_Str'First + 7));
 
-            if Hour < 0 or else Hour > 23
-               or else Minute < 0 or else Minute > 59
-               or else Second < 0 or else Second > 59
+            if Int_Option.Is_None (Hour_Opt)
+               or else Int_Option.Is_None (Minute_Opt)
+               or else Int_Option.Is_None (Second_Opt)
             then
+               return Civil_Result.Error
+                 (Domain.Error.Validation_Error, "Invalid time values");
+            end if;
+
+            Hour := Int_Option.Value (Hour_Opt);
+            Minute := Int_Option.Value (Minute_Opt);
+            Second := Int_Option.Value (Second_Opt);
+
+            if Hour > 23 or else Minute > 59 or else Second > 59 then
                return Civil_Result.Error
                  (Domain.Error.Validation_Error, "Invalid time values");
             end if;
@@ -447,18 +528,25 @@ package body Zoneinfo.API.Parse is
             declare
                Num_Str : constant String := S (Num_Start .. Pos - 1);
                Dot_Pos : constant Natural := Index (Num_Str, '.');
+               Int_Part_Opt : Int64_Option.Option;
                Int_Part : Int64;
             begin
                if Dot_Pos > 0 then
-                  Int_Part := Parse_Int64
+                  Int_Part_Opt := Parse_Int64
                     (Num_Str (Num_Str'First .. Dot_Pos - 1));
                   if Dot_Pos < Num_Str'Last then
                      Nanos := Parse_Nanos
                        (Num_Str (Dot_Pos + 1 .. Num_Str'Last));
                   end if;
                else
-                  Int_Part := Parse_Int64 (Num_Str);
+                  Int_Part_Opt := Parse_Int64 (Num_Str);
                end if;
+
+               if Int64_Option.Is_None (Int_Part_Opt) then
+                  return Duration_Result.Error
+                    (Domain.Error.Validation_Error, "Invalid number");
+               end if;
+               Int_Part := Int64_Option.Value (Int_Part_Opt);
 
                case S (Pos) is
                   when 'D' => Days := Int_Part;
@@ -527,18 +615,25 @@ package body Zoneinfo.API.Parse is
                declare
                   Num_Str : constant String := S (Num_Start .. Pos - 1);
                   Dot_Pos : constant Natural := Index (Num_Str, '.');
+                  Int_Part_Opt : Int64_Option.Option;
                   Int_Part : Int64;
                begin
                   if Dot_Pos > 0 then
-                     Int_Part := Parse_Int64
+                     Int_Part_Opt := Parse_Int64
                        (Num_Str (Num_Str'First .. Dot_Pos - 1));
                      if Dot_Pos < Num_Str'Last then
                         Nanos := Parse_Nanos
                           (Num_Str (Dot_Pos + 1 .. Num_Str'Last));
                      end if;
                   else
-                     Int_Part := Parse_Int64 (Num_Str);
+                     Int_Part_Opt := Parse_Int64 (Num_Str);
                   end if;
+
+                  if Int64_Option.Is_None (Int_Part_Opt) then
+                     return Duration_Result.Error
+                       (Domain.Error.Validation_Error, "Invalid number");
+                  end if;
+                  Int_Part := Int64_Option.Value (Int_Part_Opt);
 
                   case S (Pos) is
                      when 'd' | 'D' => Days := Int_Part;
@@ -577,6 +672,8 @@ package body Zoneinfo.API.Parse is
       Is_Negative : Boolean := False;
       Hours       : Integer := 0;
       Minutes     : Integer := 0;
+      Hours_Opt   : Int_Option.Option;
+      Minutes_Opt : Int_Option.Option;
    begin
       if S'Length = 0 then
          return Duration_Result.Error
@@ -599,21 +696,32 @@ package body Zoneinfo.API.Parse is
          Colon_Pos  : constant Natural := Index (Offset_Str, ':');
       begin
          if Colon_Pos > 0 then
-            Hours := Parse_Int
+            Hours_Opt := Parse_Int
               (Offset_Str (Offset_Str'First .. Colon_Pos - 1));
-            Minutes := Parse_Int
+            Minutes_Opt := Parse_Int
               (Offset_Str (Colon_Pos + 1 .. Offset_Str'Last));
          elsif Offset_Str'Length = 4 then
-            Hours := Parse_Int
+            Hours_Opt := Parse_Int
               (Offset_Str (Offset_Str'First .. Offset_Str'First + 1));
-            Minutes := Parse_Int
+            Minutes_Opt := Parse_Int
               (Offset_Str (Offset_Str'First + 2 .. Offset_Str'Last));
          elsif Offset_Str'Length = 2 then
-            Hours := Parse_Int (Offset_Str);
+            Hours_Opt := Parse_Int (Offset_Str);
+            Minutes_Opt := Int_Option.New_Some (0);
          else
             return Duration_Result.Error
               (Domain.Error.Validation_Error, "Invalid offset format");
          end if;
+
+         if Int_Option.Is_None (Hours_Opt)
+            or else Int_Option.Is_None (Minutes_Opt)
+         then
+            return Duration_Result.Error
+              (Domain.Error.Validation_Error, "Invalid offset values");
+         end if;
+
+         Hours := Int_Option.Value (Hours_Opt);
+         Minutes := Int_Option.Value (Minutes_Opt);
       end;
 
       if Hours < 0 or else Hours > 23

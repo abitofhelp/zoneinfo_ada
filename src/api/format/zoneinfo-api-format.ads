@@ -41,6 +41,7 @@ with Domain.Value_Object.Civil;
 with Domain.Value_Object.Duration_Type;
 with Domain.Value_Object.Zone_ID;
 with Domain.Value_Object.Instant;
+with Zoneinfo_Config;
 
 package Zoneinfo.API.Format
   with Preelaborate
@@ -62,7 +63,8 @@ is
    --  Maximum length for formatted datetime strings
    --  ISO 8601: "2025-12-04T14:30:00.123456789-12:00
    --            [America/Argentina/Buenos_Aires]" = ~80 chars max
-   Max_Datetime_Length : constant := 96;
+   --  Size configured per profile in Zoneinfo_Config
+   Max_Datetime_Length : constant := Zoneinfo_Config.Max_Datetime_Length;
 
    package Datetime_Strings is new
      Ada.Strings.Bounded.Generic_Bounded_Length (Max => Max_Datetime_Length);
@@ -70,7 +72,8 @@ is
 
    --  Maximum length for formatted duration strings
    --  ISO 8601 Duration: "P999999999DT23H59M59.999999999S" = ~40 chars
-   Max_Duration_Length : constant := 48;
+   --  Size configured per profile in Zoneinfo_Config
+   Max_Duration_Length : constant := Zoneinfo_Config.Max_Duration_Length;
 
    package Duration_Strings is new
      Ada.Strings.Bounded.Generic_Bounded_Length (Max => Max_Duration_Length);

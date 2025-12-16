@@ -38,6 +38,7 @@ pragma Ada_2022;
 
 with Ada.Strings.Bounded;
 with Domain.Error.Result;
+with Zoneinfo_Config;
 
 package Domain.Value_Object.Zone_ID
   with Preelaborate
@@ -48,8 +49,8 @@ is
 
    --  Maximum length for IANA timezone identifiers
    --  Longest known: "America/Argentina/ComodRivadavia" (32 chars)
-   --  Using 64 for safety margin
-   Max_Zone_ID_Length : constant := 64;
+   --  Size configured per profile in Zoneinfo_Config
+   Max_Zone_ID_Length : constant := Zoneinfo_Config.Max_Zone_ID_Length;
 
    package Zone_ID_Strings is new
      Ada.Strings.Bounded.Generic_Bounded_Length (Max => Max_Zone_ID_Length);

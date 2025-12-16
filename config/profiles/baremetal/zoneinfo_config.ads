@@ -41,17 +41,21 @@ package Zoneinfo_Config is
    --  Bounded String Configuration
    --  =======================================================================
 
-   --  Maximum length of person names
-   --  Bare metal profile: 32 characters (minimal)
-   Max_Name_Length : constant := 32;
-
-   --  Maximum length of greeting messages
-   --  Bare metal profile: 64 characters
-   Max_Message_Length : constant := 64;
-
    --  Maximum length of error messages
    --  Bare metal profile: 128 characters
    Max_Error_Length : constant := 128;
+
+   --  Maximum length of IANA timezone identifiers (e.g., "America/New_York")
+   --  Fixed size - IANA format constraint
+   Max_Zone_ID_Length : constant := 64;
+
+   --  Maximum length of formatted datetime strings (ISO 8601)
+   --  Bare metal profile: 48 characters (minimal formatting)
+   Max_Datetime_Length : constant := 48;
+
+   --  Maximum length of formatted duration strings (ISO 8601)
+   --  Bare metal profile: 24 characters
+   Max_Duration_Length : constant := 24;
 
    --  =======================================================================
    --  Discovery Configuration
@@ -68,23 +72,5 @@ package Zoneinfo_Config is
    --  Maximum search paths for source discovery
    --  Bare metal profile: 3 paths
    Max_Search_Paths : constant := 3;
-
-   --  Maximum discovered timezone sources
-   --  Bare metal profile: 2 sources
-   Max_Sources : constant := 2;
-
-   --  Maximum zone IDs in a list result
-   --  Bare metal profile: 50 zones (minimal subset)
-   Max_Zone_Ids : constant := 50;
-
-   --  =======================================================================
-   --  Runtime Configuration
-   --  =======================================================================
-
-   --  Disable contracts to minimize overhead on ZFP
-   Enable_Contracts : constant Boolean := False;
-
-   --  Disable debug output for bare metal
-   Enable_Debug : constant Boolean := False;
 
 end Zoneinfo_Config;

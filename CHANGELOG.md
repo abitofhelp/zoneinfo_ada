@@ -1,11 +1,11 @@
 # Changelog
 
-**Version:** Unreleased
-**Date:** December 10, 2025
-**SPDX-License-Identifier:** BSD-3-Clause
-**License File:** See the LICENSE file in the project root.
-**Copyright:** (c) 2025 Michael Gardner, A Bit of Help, Inc.
-**Status:** Development
+**Version:** 1.0.0<br>
+**Date:** December 15, 2025<br>
+**SPDX-License-Identifier:** BSD-3-Clause<br>
+**License File:** See the LICENSE file in the project root<br>
+**Copyright:** © 2025 Michael Gardner, A Bit of Help, Inc.<br>
+**Status:** Released
 
 All notable changes to this project will be documented in this file.
 
@@ -25,3 +25,103 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 ### Security
+
+## [1.0.0] - 2025-12-15
+
+Initial release of the Zoneinfo timezone-aware datetime library for Ada 2022.
+
+### Added
+
+- **Domain Value Objects**
+  - Instant - Absolute moment in time (epoch nanoseconds)
+  - Zoned - Instant with timezone context
+  - Civil - Timezone-blind calendar components (year, month, day, hour, minute, second, nanosecond)
+  - Duration_Type - Time span with nanosecond precision
+  - Zone_ID - IANA timezone identifier (bounded string)
+  - Source_Info - Timezone database source metadata
+
+- **ISO 8601 Parsing** (`Zoneinfo.API.Parse`)
+  - Parse datetime strings: `From_ISO_8601`
+  - Parse with UTC offset: `From_ISO_8601_With_Offset`
+  - Parse with zone ID: `From_ISO_8601_With_Zone`
+  - Parse full format: `From_ISO_8601_Full`
+  - Parse date-only: `From_ISO_Date`
+  - Parse time-only: `From_ISO_Time`
+  - Parse ISO 8601 durations: `From_ISO_Duration`
+  - Parse human-readable durations: `From_Human_Duration`
+  - Parse UTC offsets: `Parse_Offset`
+
+- **Datetime Formatting** (`Zoneinfo.API.Format`)
+  - Format as ISO 8601: `To_ISO_8601`
+  - Format with custom patterns: `Format_Civil`
+  - Format with timezone: `To_ISO_8601_With_Zone`
+
+- **Timezone Discovery** (`Zoneinfo.API.Discovery`)
+  - Discover timezone sources: `Discover_Sources`
+  - Load timezone source: `Load_Source`
+  - Validate timezone source: `Validate_Source`
+  - Find system timezone: `Find_My_Id`
+  - Get database version: `Get_Version`
+  - List all zones: `List_All_Zones`
+  - Search by pattern: `Find_By_Pattern`
+  - Search by region: `Find_By_Region`
+  - Search by regex: `Find_By_Regex`
+
+- **Pure Operations** (`Zoneinfo.API.Operations`)
+  - Instant arithmetic: Add, Subtract, Diff
+  - Duration arithmetic: Add, Subtract, Negate
+  - Operators: `+`, `-` for Result-based arithmetic
+  - All operations SPARK-verified
+
+- **Architecture**
+  - 4-layer hexagonal architecture (Domain → Application → Infrastructure → API)
+  - Dependency inversion via ports and adapters
+  - Static dependency injection
+  - Result monad error handling (no exceptions)
+  - TZif library integration for IANA timezone database access
+
+- **Error Handling**
+  - Seven error kinds: Validation, Timezone, Overflow, Ambiguous_Time, Gap_Time, IO, Internal
+  - Functional error handling via Result monad (from `functional` crate)
+  - Detailed error messages with context
+
+- **Testing**
+  - 356 unit tests (Domain, Application, Infrastructure, API layers)
+  - 154 integration tests (cross-layer functionality)
+  - 510 total tests, all passing
+  - Test coverage framework via AUnit
+
+- **Build System**
+  - Alire package manager support
+  - GPR project files for modular builds
+  - Makefile convenience targets
+  - Debug and release profiles
+  - SPARK verification support
+
+- **Documentation**
+  - Software Requirements Specification
+  - Software Design Specification
+  - Software Test Guide
+  - Quick Start Guide
+  - Architecture guides
+  - Comprehensive API documentation in source files
+
+### Technical Details
+
+- **Test Coverage**: 510 tests (356 unit + 154 integration), all passing
+- **SPARK Status**: Domain + Application layers verified (--mode=check)
+- **Dependencies**: functional ^4.0.0, tzif ^3.0.1, gnatcoll ^25.0.0
+- **Compiler**: GNAT 14+, Ada 2022
+- **Platforms**: Desktop (Linux, macOS, Windows)
+- **License**: BSD-3-Clause
+
+### Design Decisions
+
+- **No Exceptions**: All errors returned via Result monad for functional error handling
+- **TZif Integration**: Built on TZif library for IANA timezone database access
+- **Value Objects**: Immutable domain types with validation
+- **SPARK Boundaries**: Domain + Application layers verified, Infrastructure + API layers use I/O
+- **Static Dispatch**: Generic instantiation for zero runtime overhead
+- **Library Standalone**: Explicit Library_Interface for ABI stability
+
+[1.0.0]: https://github.com/abitofhelp/zoneinfo/releases/tag/v1.0.0

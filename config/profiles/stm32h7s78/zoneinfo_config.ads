@@ -44,17 +44,21 @@ package Zoneinfo_Config is
    --  Bounded String Configuration
    --  =======================================================================
 
-   --  Maximum length of person names
-   --  STM32H7S78 profile: 64 characters (generous for embedded)
-   Max_Name_Length : constant := 64;
-
-   --  Maximum length of greeting messages
-   --  STM32H7S78 profile: 128 characters
-   Max_Message_Length : constant := 128;
-
    --  Maximum length of error messages
    --  STM32H7S78 profile: 256 characters
    Max_Error_Length : constant := 256;
+
+   --  Maximum length of IANA timezone identifiers (e.g., "America/New_York")
+   --  Fixed size - IANA format constraint
+   Max_Zone_ID_Length : constant := 64;
+
+   --  Maximum length of formatted datetime strings (ISO 8601 with zone)
+   --  STM32H7S78 profile: 64 characters (external PSRAM allows generous sizing)
+   Max_Datetime_Length : constant := 64;
+
+   --  Maximum length of formatted duration strings (ISO 8601)
+   --  STM32H7S78 profile: 32 characters
+   Max_Duration_Length : constant := 32;
 
    --  =======================================================================
    --  Discovery Configuration
@@ -71,23 +75,5 @@ package Zoneinfo_Config is
    --  Maximum search paths for source discovery
    --  STM32H7S78 profile: 20 paths
    Max_Search_Paths : constant := 20;
-
-   --  Maximum discovered timezone sources
-   --  STM32H7S78 profile: 10 sources
-   Max_Sources : constant := 10;
-
-   --  Maximum zone IDs in a list result
-   --  STM32H7S78 profile: 200 zones
-   Max_Zone_Ids : constant := 200;
-
-   --  =======================================================================
-   --  Runtime Configuration
-   --  =======================================================================
-
-   --  Enable assertions and contracts (has plenty of memory)
-   Enable_Contracts : constant Boolean := True;
-
-   --  Enable debug output for development
-   Enable_Debug : constant Boolean := True;
 
 end Zoneinfo_Config;

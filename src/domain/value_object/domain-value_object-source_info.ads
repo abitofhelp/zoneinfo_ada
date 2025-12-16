@@ -125,8 +125,14 @@ is
    function To_String (Path : Path_String) return String is
      (Path_Strings.To_String (Path));
 
-   --  Path list for discovery operations
+   --  Path list for discovery operations (unconstrained base type)
    type Path_List is array (Positive range <>) of Path_String;
+
+   --  Maximum search paths for discovery (from config)
+   Max_Search_Paths : constant Positive := Zoneinfo_Config.Max_Search_Paths;
+
+   --  Bounded path list subtype for embedded/constrained use
+   subtype Bounded_Path_List is Path_List (1 .. Max_Search_Paths);
 
    --  ========================================================================
    --  Source_Info - The Value Object

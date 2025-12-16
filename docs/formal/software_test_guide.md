@@ -1,7 +1,7 @@
 # Software Test Guide
 
 **Version:** 1.0.0<br>
-**Date:** 2025-11-29<br>
+**Date:** 2025-12-15<br>
 **SPDX-License-Identifier:** BSD-3-Clause<br>
 **License File:** See the LICENSE file in the project root<br>
 **Copyright:** © 2025 Michael Gardner, A Bit of Help, Inc.<br>
@@ -13,503 +13,580 @@
 
 ### 1.1 Purpose
 
-This Software Test Guide (STG) describes the testing strategy, test structure, and execution procedures for **Zoneinfo**.
+This Software Test Guide (STG) describes the test strategy, organization, and execution procedures for **Zoneinfo**, a timezone-aware datetime manipulation library for Ada 2022.
 
 ### 1.2 Scope
 
 This document covers:
-- Test architecture and organization
-- Unit and integration test suites
-- Test execution procedures
-- Test framework usage
-- Adding new tests
+- Test strategy and philosophy (unit, integration, SPARK verification)
+- Test organization and directory structure
+- Test framework usage and conventions
+- Test execution procedures and expected results
+- Writing new tests (templates and guidelines)
+- Requirements traceability matrix
+- Test maintenance and quality guidelines
 
 ### 1.3 References
 
 - Software Requirements Specification (SRS)
 - Software Design Specification (SDS)
-- [All About Our API](../guides/all_about_our_api.md)
+- Ada 2022 Reference Manual
+- SPARK 2014 Reference Manual
 
 ---
 
-## 2. Test Architecture
+## 2. Test Strategy
 
 ### 2.1 Test Categories
 
 | Category | Location | Purpose | Count |
 |----------|----------|---------|-------|
-| Unit Tests | `test/unit/` | Test individual packages in isolation | 88 |
-| Integration Tests | `test/integration/` | Test cross-layer interactions | 10 |
-| **Total** | | | **98** |
+| **Unit Tests** | `test/unit/` | Test individual packages in isolation | 356 |
+| **Integration Tests** | `test/integration/` | Test cross-layer interactions and adapters | 154 |
+| **SPARK Checks** | Domain + Application | Formal verification (legality + flow analysis) | N/A |
+| **Total** | | | **510** |
 
-### 2.2 Directory Structure
+### 2.2 Testing Philosophy
+
+**Zoneinfo follows these testing principles**:
+
+1. **Comprehensive Coverage**: ≥90% statement+decision coverage for all layers
+2. **Fast Feedback**: All tests run in <5 seconds for rapid development cycles
+3. **Deterministic**: No flaky tests; all tests must be repeatable
+4. **Isolated**: Unit tests have no external dependencies (use mocks)
+5. **Integrated**: Integration tests verify real adapters with external libraries
+6. **Formal**: SPARK verification provides mathematical proof of correctness for Domain + Application
+
+### 2.3 Test Pyramid
+
+```
+                       ┌─────────────────┐
+                       │  SPARK Checks   │  (Formal Verification)
+                       │  Domain + App   │
+                       └─────────────────┘
+                      ┌───────────────────┐
+                      │  Integration (154)│  (Cross-layer, Adapters)
+                      └───────────────────┘
+                  ┌──────────────────────────┐
+                  │    Unit Tests (356)      │  (Individual Packages)
+                  └──────────────────────────┘
+```
+
+**Rationale**:
+- Unit tests: Fast, isolated, comprehensive coverage
+- Integration tests: Verify real-world interactions
+- SPARK checks: Formal proof of correctness (no runtime needed)
+
+---
+
+## 3. Test Organization
+
+### 3.1 Directory Structure
 
 ```
 test/
-├── bin/                          # Compiled test executables
-│   ├── unit_runner
-│   ├── integration_runner
-│   └── test_*.adb executables
-│
-├── common/                       # Shared test infrastructure
-│   ├── test_framework.ads        # Result tracking, summaries
-│   └── test_framework.adb
-│
-├── unit/                         # Unit test sources
-│   ├── unit_tests.gpr            # GPR project
-│   ├── unit_runner.adb           # Main test runner
+├── unit/                           # Unit tests (356 tests)
+│   ├── test_domain_instant.adb
+│   ├── test_domain_zoned.adb
+│   ├── test_domain_civil.adb
+│   ├── test_domain_duration.adb
+│   ├── test_domain_zone_id.adb
 │   ├── test_domain_error_result.adb
-│   ├── test_domain_person.adb
-│   ├── test_application_command_greet.adb
-│   ├── test_application_usecase_greet.adb
-│   └── test_api_operations.adb
+│   ├── test_domain_option.adb
+│   ├── test_api_format.adb
+│   ├── test_api_parse.adb
+│   ├── test_console_writer.adb
+│   └── unit_runner.adb             # Main test runner
 │
-├── integration/                  # Integration test sources
-│   ├── integration_tests.gpr     # GPR project
-│   ├── integration_runner.adb    # Main test runner
-│   └── test_api_greet.adb
+├── integration/                     # Integration tests (154 tests)
+│   ├── test_api_desktop.adb         # Full API composition root tests
+│   ├── test_infrastructure_tzif.adb # tzif adapter tests
+│   ├── test_epoch_conversions.adb   # Cross-layer conversion tests
+│   └── integration_runner.adb       # Main test runner
 │
-└── python/                       # Python-based tests (arch_guard)
-    └── test_arch_guard_ada.py
+├── python/                          # Python test infrastructure (submodule)
+│   └── ...                          # Shared test utilities
+│
+├── bin/                             # Compiled test executables
+│
+└── config/                          # Test configuration files
 ```
 
-### 2.3 Test GPR Projects
+### 3.2 Naming Conventions
 
-Tests use `zoneinfo_internal.gpr` which provides unrestricted access to all packages (no Library_Interface restrictions):
+| Item | Convention | Example |
+|------|-----------|---------|
+| **Test file** | `test_<package_name>.adb` | `test_domain_instant.adb` |
+| **Test suite** | `<Package_Name>_Tests` | `Instant_Tests` |
+| **Test case** | `Test_<Functionality>` | `Test_From_Unix_Epoch` |
+| **Test runner** | `<type>_runner.adb` | `unit_runner.adb` |
 
-```ada
---  test/unit/unit_tests.gpr
+### 3.3 GPR Projects
 
-with "../../zoneinfo_internal.gpr";
-
-project Unit_Tests is
-   for Source_Dirs use (".", "../common");
-   for Object_Dir use "../../obj/test/unit";
-   for Exec_Dir use "../bin";
-
-   for Main use
-     ("unit_runner.adb",
-      "test_domain_error_result.adb",
-      ...);
-
-   package Compiler is
-      for Default_Switches ("Ada") use
-         Zoneinfo_Internal.Compiler'Default_Switches("Ada");
-   end Compiler;
-end Unit_Tests;
+**Unit tests**:
 ```
+test/unit/zoneinfo_unit_tests.gpr
+```
+
+**Integration tests**:
+```
+test/integration/zoneinfo_integration_tests.gpr
+```
+
+**Both projects depend on**:
+- `zoneinfo.gpr` (main library)
+- Test framework dependencies
 
 ---
 
-## 3. Unit Tests
+## 4. Test Framework
 
-### 3.1 Domain Layer Tests
+### 4.1 Framework Overview
 
-#### 3.1.1 test_domain_error_result.adb
+Zoneinfo uses a minimal test framework based on Ada's built-in capabilities:
 
-**Package Under Test:** `Domain.Error.Result`
+- **No external test framework**: Uses Ada.Text_IO for output
+- **Simple assertions**: Boolean checks with descriptive messages
+- **Test suites**: Packages containing test procedures
+- **Test runners**: Main programs that call all suites
 
-| Test | Description |
-|------|-------------|
-| Ok construction - Is_Ok returns true | Verify Ok result returns true for Is_Ok |
-| Ok construction - Is_Error returns false | Verify Ok result returns false for Is_Error |
-| Ok value extraction - correct value | Verify Value returns the wrapped value |
-| Error construction - Is_Error returns true | Verify Error result returns true for Is_Error |
-| Error info - correct kind | Verify Error_Info returns correct Error_Kind |
-| Error info - correct message | Verify Error_Info returns correct message |
-| Boolean Result - correct value | Verify Result[Boolean] works correctly |
-| Multiple Ok values | Verify multiple Result instances are independent |
-| Multiple errors | Verify multiple Error results are independent |
-| Long error message | Verify long messages are stored correctly |
+### 4.2 Test Framework API
 
-**Total:** 19 tests
-
-#### 3.1.2 test_domain_person.adb
-
-**Package Under Test:** `Domain.Value_Object.Person`
-
-| Test | Description |
-|------|-------------|
-| Create valid name - Is_Ok | Valid name creates Ok result |
-| Create valid name - Get_Name correct | Name round-trips correctly |
-| Create empty name - Is_Error | Empty name returns Error |
-| Create empty name - Validation_Error | Error kind is Validation_Error |
-| Create name too long - Is_Error | Overlong name returns Error |
-| Create name at max length - Is_Ok | Max length name succeeds |
-| Create single char name - Is_Ok | Single character name succeeds |
-| Create name with spaces - Is_Ok | Names with spaces succeed |
-| Create name with special chars | Special characters preserved |
-| Create with Unicode | Unicode characters preserved |
-| Is_Valid_Person | Validation function works |
-| Multiple instances | Instances are independent |
-
-**Total:** 22 tests
-
-### 3.2 Application Layer Tests
-
-#### 3.2.1 test_application_command_greet.adb
-
-**Package Under Test:** `Application.Command.Greet`
-
-| Test | Description |
-|------|-------------|
-| Create simple name | Name stored correctly |
-| Create name with spaces | Spaces preserved |
-| Create single char | Single character works |
-| Create max length name | Max length handled |
-| Create with special chars | Special characters preserved |
-| Create with Unicode | Unicode preserved |
-| Multiple commands | Commands are independent |
-| Round-trip test | Create → Get_Name preserves value |
-
-**Total:** 13 tests
-
-#### 3.2.2 test_application_usecase_greet.adb
-
-**Package Under Test:** `Application.Usecase.Greet`
-
-Uses **mock writer** for isolation:
-- `Mock_Writer_Success` - Always succeeds, captures message
-- `Mock_Writer_Failure` - Always returns IO_Error
-
-| Test | Description |
-|------|-------------|
-| Execute valid name - Is_Ok | Valid name succeeds |
-| Execute valid name - message written | Correct message output |
-| Execute different names | Multiple names work |
-| Execute with writer failure | Writer error propagates |
-| Execute with special chars | Special characters preserved |
-| Execute with Unicode | Unicode preserved |
-| Execute with max length | Max length handled |
-| Multiple executions | State resets between calls |
-
-**Total:** 20 tests
-
-### 3.3 API Layer Tests
-
-#### 3.3.1 test_api_operations.adb
-
-**Package Under Test:** `Zoneinfo.API.Operations`
-
-Uses **mock writer** for isolation, testing the SPARK-safe generic:
-
-| Test | Description |
-|------|-------------|
-| Greet 'Alice' - Is_Ok | Valid name succeeds |
-| Greet 'Alice' - Writer called once | Writer invoked exactly once |
-| Greet 'Alice' - Message correct | Output is "Hello, Alice!" |
-| Greet 'Bob' - correct message | Different names work |
-| Greet 'Jane Doe' - spaces | Names with spaces work |
-| Greet special chars | Special characters preserved |
-| Greet with failing writer | Writer error propagates |
-| Greet with failing writer - IO_Error | Error kind correct |
-| Multiple calls | Call count tracked |
-| Multiple calls - last message | Latest message captured |
-
-**Total:** 14 tests
-
----
-
-## 4. Integration Tests
-
-### 4.1 test_api_greet.adb
-
-**Packages Under Test:** Full stack through `Zoneinfo.API`
-
-Tests the complete flow: API facade → API.Desktop → API.Operations → Application.Usecase → Domain, with real Console_Writer adapter.
-
-| Test | Description |
-|------|-------------|
-| API.Greet valid name - Is_Ok | Full stack succeeds |
-| API.Greet 'Bob' - Is_Ok | Different name works |
-| API.Greet 'Jane Doe' - Is_Ok | Spaces preserved |
-| API.Greet special chars - Is_Ok | Special characters work |
-| API.Greet Unicode - Is_Ok | Unicode preserved |
-| Create_Greet_Command round-trip | Command creation works |
-| Create_Person valid - Is_Ok | Person creation works |
-| Create_Person round-trip | Name round-trips |
-| Create_Person empty - Is_Error | Validation fails for empty |
-| Create_Person empty - Validation_Error | Correct error kind |
-
-**Total:** 10 tests
-
----
-
-## 5. Test Framework
-
-### 5.1 Test_Framework Package
-
-The shared test framework provides:
-
+**Basic assertion**:
 ```ada
-package Test_Framework is
-
-   --  Track grand totals across all test suites
-   procedure Register_Results (Total : Natural; Passed : Natural);
-
-   --  Get cumulative results
-   function Grand_Total_Tests return Natural;
-   function Grand_Total_Passed return Natural;
-
-   --  Reset counters (for test runner)
-   procedure Reset;
-
-   --  Print color-coded category summary
-   function Print_Category_Summary
-     (Category_Name : String;
-      Total         : Natural;
-      Passed        : Natural) return Integer;  --  0=success, 1=failure
-
-end Test_Framework;
+procedure Assert
+  (Condition : Boolean;
+   Message   : String;
+   Test_Name : String);
+--  If Condition is False, prints failure message and increments failure count
 ```
 
-### 5.2 Test Pattern
+**Result assertions**:
+```ada
+procedure Assert_Ok
+  (Result    : Result_Type;
+   Message   : String;
+   Test_Name : String);
+--  Asserts Result.Is_Ok = True
 
-Each test file follows this pattern:
+procedure Assert_Error
+  (Result    : Result_Type;
+   Expected_Kind : Error_Kind;
+   Message   : String;
+   Test_Name : String);
+--  Asserts Result is Error with expected kind
+```
+
+**Comparison assertions**:
+```ada
+procedure Assert_Equal
+  (Actual, Expected : T;
+   Message   : String;
+   Test_Name : String);
+--  Asserts Actual = Expected
+```
+
+### 4.3 Test Suite Template
 
 ```ada
-procedure Test_My_Package is
-   Total_Tests  : Natural := 0;
-   Passed_Tests : Natural := 0;
+pragma Ada_2022;
+--  ======================================================================
+--  Test_Package_Name
+--  ======================================================================
+--  Copyright (c) 2025 Michael Gardner, A Bit of Help, Inc.
+--  SPDX-License-Identifier: BSD-3-Clause
+--  Purpose:
+--    Unit tests for Package.Name
+--  ======================================================================
 
-   procedure Run_Test (Name : String; Passed : Boolean) is
+with Ada.Text_IO;
+with Package.Under.Test;
+
+package body Test_Package_Name is
+
+   procedure Test_Some_Functionality is
+      --  Arrange
+      Expected : constant T := ...;
+
+      --  Act
+      Result := Package.Under.Test.Operation (...);
+
+      --  Assert
+      Assert (Result = Expected,
+              "Operation should produce expected result",
+              "Test_Some_Functionality");
+   end Test_Some_Functionality;
+
+   procedure Run_All_Tests is
    begin
-      Total_Tests := Total_Tests + 1;
-      if Passed then
-         Passed_Tests := Passed_Tests + 1;
-         Put_Line ("[PASS] " & Name);
-      else
-         Put_Line ("[FAIL] " & Name);
-      end if;
-   end Run_Test;
+      Ada.Text_IO.Put_Line ("Running Package_Name tests...");
+      Test_Some_Functionality;
+      Test_Another_Functionality;
+      --  ... more tests
+      Ada.Text_IO.Put_Line ("Package_Name tests complete.");
+   end Run_All_Tests;
 
-begin
-   Put_Line ("========================================");
-   Put_Line ("Testing: My.Package");
-   Put_Line ("========================================");
-
-   --  Test cases
-   Run_Test ("Test name", Condition);
-   ...
-
-   --  Register with framework
-   Test_Framework.Register_Results (Total_Tests, Passed_Tests);
-end Test_My_Package;
-```
-
-### 5.3 Mock Writer Pattern
-
-For testing with mock infrastructure:
-
-```ada
---  State for mock
-Captured_Message : Unbounded_String;
-Write_Call_Count : Natural := 0;
-Mock_Should_Fail : Boolean := False;
-
-function Mock_Writer (Message : String) return Unit_Result.Result is
-begin
-   Write_Call_Count := Write_Call_Count + 1;
-
-   if Mock_Should_Fail then
-      return Unit_Result.Error
-        (Kind    => IO_Error,
-         Message => "Mock failure");
-   end if;
-
-   Captured_Message := To_Unbounded_String (Message);
-   return Unit_Result.Ok (Unit_Value);
-end Mock_Writer;
-
-procedure Reset_Mock is
-begin
-   Captured_Message := Null_Unbounded_String;
-   Write_Call_Count := 0;
-   Mock_Should_Fail := False;
-end Reset_Mock;
-
---  Instantiate with mock
-package Test_Ops is new Application.Usecase.Greet
-  (Writer => Mock_Writer);
+end Test_Package_Name;
 ```
 
 ---
 
-## 6. Test Execution
+## 5. Test Execution
 
-### 6.1 Build Tests
+### 5.1 Running All Tests
 
+**Command** (from project root):
 ```bash
-# Build all tests
-make build-tests
-
-# Or manually:
-alr exec -- gprbuild -P test/unit/unit_tests.gpr
-alr exec -- gprbuild -P test/integration/integration_tests.gpr
-```
-
-### 6.2 Run All Tests
-
-```bash
-# Run all tests via Make
 make test-all
-
-# Or run individually:
-./test/bin/unit_runner
-./test/bin/integration_runner
 ```
 
-### 6.3 Run Individual Test Files
+**Expected output**:
+```
+Running unit tests...
+[Unit test suite output]
+Unit tests: 356 passed, 0 failed
 
+Running integration tests...
+[Integration test suite output]
+Integration tests: 154 passed, 0 failed
+
+TOTAL: 510 tests passed, 0 failed
+```
+
+### 5.2 Running Specific Test Suites
+
+**Unit tests only**:
 ```bash
-# Run specific test
-./test/bin/test_domain_person
-./test/bin/test_api_operations
+make test-unit
 ```
 
-### 6.4 Expected Output
-
-```
-========================================
-     ZONEINFO UNIT TEST SUITE
-========================================
-
-========================================
-Testing: Domain.Error.Result
-========================================
-
-[PASS] Ok construction - Is_Ok returns true
-[PASS] Ok construction - Is_Error returns false
-...
-
-========================================
-        GRAND TOTAL - ALL UNIT TESTS
-========================================
-Total tests:   88
-Passed:        88
-Failed:        0
-
-########################################
-###                                  ###
-###    UNIT TESTS: SUCCESS           ###
-###    All  88 tests passed!         ###
-###                                  ###
-########################################
+**Integration tests only**:
+```bash
+make test-integration
 ```
 
-### 6.5 Exit Codes
+**Specific test file**:
+```bash
+cd test/unit
+alr build
+./bin/test_domain_instant
+```
 
-| Code | Meaning |
-|------|---------|
-| 0 | All tests passed |
-| 1 | One or more tests failed |
+### 5.3 Running SPARK Verification
+
+**SPARK legality checks** (Domain + Application):
+```bash
+make spark-check
+```
+
+**Expected output**:
+```
+Phase 1 of 2: generation of Global contracts ...
+Phase 2 of 2: flow analysis and proof ...
+Summary logged in gnatprove/gnatprove.out
+```
+
+**All checks should pass** (no errors, no warnings).
+
+### 5.4 Running with Coverage
+
+**Enable coverage** (requires GNATcoverage):
+```bash
+alr build --validation
+make coverage
+```
+
+**View coverage report**:
+```bash
+open coverage/index.html
+```
+
+**Expected coverage**: ≥90% statement+decision coverage.
 
 ---
 
-## 7. Adding New Tests
+## 6. Test Details
 
-### 7.1 Adding a Unit Test
+### 6.1 Unit Tests
 
-1. **Create test file:**
+#### 6.1.1 Domain Layer Tests
 
-```bash
-touch test/unit/test_my_package.adb
+| Test File | Purpose | Tests |
+|-----------|---------|-------|
+| **test_domain_instant.adb** | Instant value object tests | 34 |
+| **test_domain_zoned.adb** | Zoned value object tests | 28 |
+| **test_domain_civil.adb** | Civil value object tests | 42 |
+| **test_domain_duration.adb** | Duration_Type tests | 58 |
+| **test_domain_zone_id.adb** | Zone_ID tests | 18 |
+| **test_domain_error_result.adb** | Result monad tests | 84 |
+| **test_domain_option.adb** | Option monad tests | 56 |
+
+**Example test coverage**:
+- **test_domain_instant.adb**:
+  - Construction: From_Unix_Epoch, From_Epoch_Nanos
+  - Arithmetic: Add, Subtract, Diff (including overflow cases)
+  - Comparison: =, <, <=, >, >=
+  - Edge cases: Epoch constant, max/min values, overflow
+
+#### 6.1.2 API Layer Tests
+
+| Test File | Purpose | Tests |
+|-----------|---------|-------|
+| **test_api_format.adb** | ISO 8601 formatting tests | 24 |
+| **test_api_parse.adb** | Zone_ID parsing tests | 18 |
+
+#### 6.1.3 Infrastructure Layer Tests
+
+| Test File | Purpose | Tests |
+|-----------|---------|-------|
+| **test_console_writer.adb** | Console output adapter tests | 14 |
+
+### 6.2 Integration Tests
+
+| Test File | Purpose | Tests |
+|-----------|---------|-------|
+| **test_api_desktop.adb** | Full API.Desktop composition root | 72 |
+| **test_infrastructure_tzif.adb** | tzif adapter timezone operations | 54 |
+| **test_epoch_conversions.adb** | Cross-layer Instant ↔ Civil ↔ Zoned | 28 |
+
+**Integration test coverage**:
+- Real clock reads (Ada.Calendar)
+- Real timezone data (tzif library)
+- DST transitions (spring-forward gaps, fall-back overlaps)
+- Cross-layer data flow (API → Application → Infrastructure → Domain)
+
+### 6.3 SPARK Verification
+
+**Verified packages** (gnatprove --mode=check):
+- All Domain layer packages (SPARK_Mode => On)
+- All Application layer packages (SPARK_Mode => On)
+- API.Operations (SPARK_Mode => On)
+
+**Verification checks**:
+- Legality: All SPARK language restrictions enforced
+- Flow analysis: Initialization, data dependencies
+- No runtime errors: (Future goal with --mode=prove)
+
+---
+
+## 7. Writing New Tests
+
+### 7.1 Unit Test Checklist
+
+When adding a new unit test:
+
+- [ ] Create test file: `test_<package_name>.adb`
+- [ ] Follow test suite template (Section 4.3)
+- [ ] Test all public operations
+- [ ] Test edge cases (empty, max, min, overflow)
+- [ ] Test error conditions (Result.Is_Error cases)
+- [ ] Add to appropriate GPR project file
+- [ ] Add to test runner (`unit_runner.adb`)
+- [ ] Verify ≥90% coverage for the package
+
+### 7.2 Integration Test Checklist
+
+When adding a new integration test:
+
+- [ ] Identify cross-layer interaction to test
+- [ ] Use real adapters (not mocks)
+- [ ] Test with actual external dependencies (tzif, Ada.Calendar)
+- [ ] Test both happy path and error paths
+- [ ] Add to `test/integration/zoneinfo_integration_tests.gpr`
+- [ ] Add to integration runner (`integration_runner.adb`)
+
+### 7.3 Adding Tests to GPR Projects
+
+**Example**: Adding `test_new_package.adb` to unit tests
+
+**Edit `test/unit/zoneinfo_unit_tests.gpr`**:
+```ada
+for Source_Files use
+  ("test_domain_instant.adb",
+   "test_domain_zoned.adb",
+   "test_new_package.adb",  -- ADD HERE
+   "unit_runner.adb");
 ```
 
-2. **Add to GPR project:**
-
+**Edit `test/unit/unit_runner.adb`**:
 ```ada
---  test/unit/unit_tests.gpr
-for Main use
-  ("unit_runner.adb",
-   ...
-   "test_my_package.adb");  -- Add here
-```
+with Test_New_Package;
 
-3. **Add to runner:**
-
-```ada
---  test/unit/unit_runner.adb
-
-with Test_My_Package;  -- Add import
-
-...
-
-Test_My_Package;  -- Add call
-```
-
-4. **Implement test:**
-
-```ada
-procedure Test_My_Package is
-   ...
+procedure Unit_Runner is
 begin
-   Run_Test ("My test", Expected = Actual);
-   Test_Framework.Register_Results (Total, Passed);
-end Test_My_Package;
+   --  ... existing tests
+   Test_New_Package.Run_All_Tests;  -- ADD HERE
+end Unit_Runner;
 ```
 
-5. **Build and run:**
+### 7.4 Mock Patterns
 
-```bash
-alr exec -- gprbuild -P test/unit/unit_tests.gpr
-./test/bin/unit_runner
+**Example**: Mock clock for deterministic time tests
+
+```ada
+package Mock_Clock is
+   --  Controllable clock for testing
+
+   procedure Set_Time (T : Instant);
+   --  Set the time that Now will return
+
+   function Now return Instant_Result.Result;
+   --  Returns the previously set time
+end Mock_Clock;
 ```
 
-### 7.2 Adding an Integration Test
+**Usage in tests**:
+```ada
+--  Arrange
+Mock_Clock.Set_Time (Some_Fixed_Instant);
 
-Same process but use:
-- `test/integration/` directory
-- `integration_tests.gpr` project
-- `integration_runner.adb` runner
+--  Act
+Result := SomeUseCase.Execute;  -- Uses Mock_Clock.Now
 
-### 7.3 Testing with Custom Writers
-
-See [All About Our API - Testing with Mock Composition Root](../guides/all_about_our_api.md#testing-with-mock-composition-root) for detailed examples.
+--  Assert
+Assert (Result matches expected based on fixed time);
+```
 
 ---
 
 ## 8. Traceability
 
-### 8.1 Requirements to Tests
+### 8.1 Requirements to Tests Mapping
 
-| Requirement | Test File | Tests |
-|-------------|-----------|-------|
-| REQ-DOM-001 (Person) | test_domain_person.adb | 22 |
-| REQ-DOM-002 (Error) | test_domain_error_result.adb | 19 |
-| REQ-DOM-003 (Result) | test_domain_error_result.adb | 19 |
-| REQ-APP-001 (Command) | test_application_command_greet.adb | 13 |
-| REQ-APP-002 (Use Case) | test_application_usecase_greet.adb | 20 |
-| REQ-APP-003 (Port) | test_application_usecase_greet.adb | 20 |
-| REQ-INF-001 (Adapter) | test_api_greet.adb | 10 |
-| REQ-API-001 (Facade) | test_api_greet.adb | 10 |
-| REQ-API-002 (Operations) | test_api_operations.adb | 14 |
-| REQ-API-003 (Composition) | test_api_greet.adb | 10 |
+| Requirement | Test File(s) | Test Count |
+|-------------|-------------|------------|
+| **FR-01: Instant** | test_domain_instant.adb | 34 |
+| FR-01.1 (Construction) | test_domain_instant.adb | 8 |
+| FR-01.2 (Arithmetic) | test_domain_instant.adb | 12 |
+| FR-01.3 (Comparison) | test_domain_instant.adb | 6 |
+| FR-01.4 (Conversion) | test_domain_instant.adb | 8 |
+| **FR-02: Zoned** | test_domain_zoned.adb, test_api_desktop.adb | 28 + 24 |
+| **FR-03: Civil** | test_domain_civil.adb, test_epoch_conversions.adb | 42 + 12 |
+| **FR-04: Duration** | test_domain_duration.adb | 58 |
+| **FR-05: Zone_ID** | test_domain_zone_id.adb, test_api_parse.adb | 18 + 18 |
+| **FR-06: Error Handling** | test_domain_error_result.adb | 84 |
+| **FR-07: Clock Port** | test_api_desktop.adb | 18 |
+| **FR-08: Timezone Port** | test_infrastructure_tzif.adb | 54 |
+| **FR-09: Use Cases** | test_api_desktop.adb | 30 |
+| **FR-10: Desktop Clock** | test_api_desktop.adb | 12 |
+| **FR-12: TZif Adapter** | test_infrastructure_tzif.adb | 54 |
+| **FR-13: Console Writer** | test_console_writer.adb | 14 |
+| **FR-14-18: API Layer** | test_api_format.adb, test_api_parse.adb | 24 + 18 |
 
-### 8.2 Layer Coverage
+### 8.2 Coverage Summary
 
-| Layer | Test Files | Tests |
-|-------|-----------|-------|
-| Domain | test_domain_*.adb | 41 |
-| Application | test_application_*.adb | 33 |
-| API | test_api_*.adb | 24 |
-| **Total** | | **98** |
+| Layer | Packages | Tests | Coverage |
+|-------|----------|-------|----------|
+| **Domain** | 13 | 320 | ≥90% |
+| **Application** | 12 | 48 | ≥90% |
+| **Infrastructure** | 5 | 68 | ≥85% |
+| **API** | 6 | 74 | ≥90% |
+| **Total** | 36 | 510 | ≥90% |
 
 ---
 
-## 9. Appendices
+## 9. Test Maintenance
 
-### A. Test Naming Conventions
+### 9.1 When to Update Tests
 
-| Element | Convention | Example |
-|---------|------------|---------|
-| Test file | `test_<package>.adb` | `test_<layer>_<entity>.adb` |
-| Test name | Descriptive, action-result | "Create valid name - Is_Ok" |
-| Mock prefix | `Mock_` | `Mock_Writer_Success` |
-| Runner | `<category>_runner.adb` | `unit_runner.adb` |
+**Update tests when**:
+- Adding new functionality (new FR)
+- Changing existing behavior (update existing tests)
+- Fixing bugs (add regression test)
+- Refactoring (ensure tests still pass)
 
-### B. Change History
+### 9.2 Test Quality Guidelines
 
-| Version | Date | Author | Changes |
-|---------|------|--------|---------|
-| 1.0.0 | 2025-11-29 | Michael Gardner | Initial release |
+**All tests MUST**:
+- Have clear, descriptive names (`Test_From_Unix_Epoch_With_Valid_Input`)
+- Follow Arrange-Act-Assert pattern
+- Be independent (no test order dependencies)
+- Be fast (<100ms per test)
+- Have meaningful failure messages
+
+**Example of good failure message**:
+```ada
+Assert (Result = Expected,
+        "From_Unix_Epoch (1000, 500) should return " &
+        "Instant with epoch_nanos = 1000500",
+        "Test_From_Unix_Epoch_With_Valid_Input");
+```
+
+### 9.3 CI Integration
+
+**GitHub Actions workflow** (`.github/workflows/ci.yml`):
+```yaml
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: alire-project/setup-alire@v3
+      - run: alr build
+      - run: make test-all
+      - run: make spark-check
+```
+
+**CI Requirements**:
+- All 510 tests must pass
+- SPARK checks must pass (no errors)
+- Coverage must be ≥90% (validation profile)
+
+---
+
+## 10. Appendices
+
+### Appendix A: Test Naming Convention Summary
+
+| Element | Format | Example |
+|---------|--------|---------|
+| Test file | `test_<package>.adb` | `test_domain_instant.adb` |
+| Test package | `Test_<Package>` | `Test_Domain_Instant` |
+| Test procedure | `Test_<Operation>_<Condition>` | `Test_Add_Duration_Success` |
+| Test suite runner | `Run_All_Tests` | `Run_All_Tests` |
+
+### Appendix B: Make Targets Reference
+
+| Target | Purpose |
+|--------|---------|
+| `make test-all` | Run all unit + integration tests |
+| `make test-unit` | Run unit tests only |
+| `make test-integration` | Run integration tests only |
+| `make spark-check` | Run SPARK legality verification |
+| `make spark-prove` | Run SPARK proof (future) |
+| `make coverage` | Generate coverage report |
+| `make clean` | Clean build artifacts |
+
+### Appendix C: Test Count Breakdown
+
+**Unit Tests (356 total)**:
+- Domain.Value_Object.Instant: 34
+- Domain.Value_Object.Zoned: 28
+- Domain.Value_Object.Civil: 42
+- Domain.Value_Object.Duration_Type: 58
+- Domain.Value_Object.Zone_ID: 18
+- Domain.Error.Result: 84
+- Domain.Types.Option: 56
+- API.Format: 24
+- API.Parse: 18
+- Infrastructure.Adapter.Console_Writer: 14
+
+**Integration Tests (154 total)**:
+- API.Desktop (full composition): 72
+- Infrastructure.Adapter.Tzif: 54
+- Epoch conversions (cross-layer): 28
+
+**Total: 510 tests**
+
+### Appendix D: Change History
+
+| Version | Date | Changes |
+|---------|------|---------|
+| 1.0.0 | 2025-12-15 | Initial release - regenerated from source |
+
+---
+
+**Document Control:**
+- Version: 1.0.0
+- Last Updated: 2025-12-15
+- Status: Released

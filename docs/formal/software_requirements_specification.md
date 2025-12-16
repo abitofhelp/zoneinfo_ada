@@ -1,11 +1,11 @@
 # Software Requirements Specification
 
-**Version:** 1.0.0
-**Date:** 2025-12-03
-**SPDX-License-Identifier:** BSD-3-Clause
-**License File:** See the LICENSE file in the project root
-**Copyright:** (c) 2025 Michael Gardner, A Bit of Help, Inc.
-**Status:** In Development
+**Version:** 1.0.0<br>
+**Date:** 2025-12-15<br>
+**SPDX-License-Identifier:** BSD-3-Clause<br>
+**License File:** See the LICENSE file in the project root<br>
+**Copyright:** © 2025 Michael Gardner, A Bit of Help, Inc.<br>
+**Status:** Released
 
 ---
 
@@ -19,41 +19,48 @@ This Software Requirements Specification (SRS) defines the functional and non-fu
 
 Zoneinfo provides:
 
-- Three datetime kinds: Instant, Zoned, and Civil
-- Duration type for time spans
+- Three datetime value objects: Instant, Zoned, and Civil
+- Duration type for time spans with nanosecond precision
 - Pluggable clock port for desktop and embedded time sources
 - Timezone conversions using IANA timezone identifiers
 - SPARK-compatible design for formal verification
 - Embedded-safe patterns (no heap allocation, bounded types only)
 
-### 1.3 Definitions
+The library builds upon the tzif library for timezone data queries and DST calculations, providing a higher-level API for datetime operations.
+
+### 1.3 Definitions and Acronyms
 
 | Term | Definition |
 |------|------------|
-| **Instant** | Absolute moment in time, epoch-based (nanoseconds since Unix epoch) |
-| **Zoned** | Instant combined with a timezone identifier |
+| **Instant** | Absolute moment in time represented as nanoseconds since Unix epoch (1970-01-01 00:00:00 UTC) |
+| **Zoned** | Instant combined with an IANA timezone identifier (e.g., America/New_York) |
 | **Civil** | Timezone-blind calendar components (year, month, day, hour, minute, second, nanosecond) |
 | **Duration** | Time span represented as seconds and nanoseconds |
-| **Zone_ID** | IANA timezone identifier (e.g., "America/New_York", "UTC") |
-| **Clock Port** | Abstract time source interface for pluggable implementations |
-| **SPARK** | Ada subset for formal verification |
-| **Result Monad** | Functional pattern for error handling without exceptions |
+| **Zone_ID** | IANA timezone identifier (e.g., "America/New_York", "UTC", "Europe/London") |
+| **Clock Port** | Abstract time source interface for pluggable implementations (desktop, embedded, mock) |
+| **SPARK** | Ada subset enabling formal verification with mathematical proof of correctness |
+| **Result Monad** | Functional pattern for error handling without exceptions (from functional library) |
+| **DST** | Daylight Saving Time |
+| **IANA** | Internet Assigned Numbers Authority (maintains timezone database) |
+| **TZif** | Time Zone Information Format (RFC 8536) |
 
 ### 1.4 References
 
 - Ada 2022 Reference Manual (ISO/IEC 8652:2023)
 - SPARK 2014 Reference Manual
-- IANA Time Zone Database (<https://www.iana.org/time-zones>)
+- IANA Time Zone Database (https://www.iana.org/time-zones)
 - RFC 8536 - Time Zone Information Format (TZif)
 - Domain-Driven Design (Eric Evans, 2003)
 - Clean Architecture (Robert C. Martin, 2017)
+- Hexagonal Architecture (Alistair Cockburn, 2005)
 
 ### 1.5 Dependencies
 
-| Crate | Purpose |
-|-------|---------|
-| **functional** | Result and Option monads for error handling |
-| **tzif** | Timezone data queries and DST calculations |
+| Crate | Version | Purpose |
+|-------|---------|---------|
+| **functional** | 4.0.0+ | Result and Option monads for error handling |
+| **tzif** | 3.0.1+ | Timezone data queries and DST calculations |
+| **gnatcoll** | 25.0.0+ | Utility library for string operations |
 
 ---
 
@@ -61,7 +68,7 @@ Zoneinfo provides:
 
 ### 2.1 Product Perspective
 
-Zoneinfo is a library designed to be imported by Ada applications requiring timezone-aware datetime operations. It builds upon the tzif library for timezone data and provides a higher-level API for datetime manipulation.
+Zoneinfo is a library designed to be imported by Ada applications requiring timezone-aware datetime operations. It integrates with the tzif library for timezone data and provides a higher-level API abstraction.
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -83,56 +90,53 @@ Zoneinfo is a library designed to be imported by Ada applications requiring time
 └─────────────────────────────────────────────────────────┘
 ```
 
-### 2.2 Product Functions
+### 2.2 Product Features
 
-| Function Category | Description |
-|-------------------|-------------|
-| **Time Retrieval** | Get current time as Instant, Zoned, or UTC |
-| **Time Conversion** | Convert between Instant, Zoned, and Civil |
-| **Time Arithmetic** | Add/subtract Duration from Instant |
-| **Timezone Operations** | Change timezone, query UTC offset |
-| **Duration Calculation** | Calculate difference between Instants |
+| Feature Category | Description |
+|------------------|-------------|
+| **Time Retrieval** | Get current time as Instant, Zoned, or UTC from pluggable clock sources |
+| **Time Conversion** | Convert between Instant, Zoned, and Civil representations |
+| **Time Arithmetic** | Add/subtract Duration from Instant with overflow protection |
+| **Timezone Operations** | Change timezone, query UTC offset, handle DST transitions |
+| **Duration Calculation** | Calculate time differences between Instants |
+| **Timezone Discovery** | List available timezones, validate Zone_IDs |
+| **Format/Parse** | Format datetime as ISO 8601, parse timezone identifiers |
 
-### 2.3 User Characteristics
+### 2.3 User Classes and Characteristics
 
-| User Type | Characteristics |
-|-----------|-----------------|
-| **Desktop Developer** | Building server/desktop applications with timezone support |
-| **Embedded Developer** | Building firmware requiring time operations without standard runtime |
-| **SPARK Developer** | Requiring formally verifiable time operations |
-| **Library Consumer** | Integrating datetime functionality into Ada applications |
+| User Type | Characteristics | Example Use Case |
+|-----------|-----------------|------------------|
+| **Desktop Developer** | Building server/desktop applications with timezone support | Web application with per-user timezone preferences |
+| **Embedded Developer** | Resource-constrained systems requiring time operations | IoT device logging events with timezone awareness |
+| **SPARK Developer** | Requires formal verification of time-critical logic | Safety-critical system with proven time calculations |
 
-### 2.4 Constraints
+### 2.4 Operating Environment
 
-| Constraint | Rationale |
-|------------|-----------|
-| Ada 2022 | Required for modern language features |
-| GNAT 14+ | Required compiler version |
-| No Heap Allocation | Embedded system compatibility |
-| Bounded Types Only | Predictable memory usage, SPARK compatibility |
-| SPARK Subset | Formal verification capability for pure operations |
+| Environment | Requirements |
+|-------------|--------------|
+| **Desktop Systems** | Linux, macOS, Windows (via Ada.Calendar clock source) |
+| **Embedded Systems** | ARM Cortex-M (reference: STM32F769I with RTC) |
+| **Ada Compiler** | GNAT 13+ with Ada 2022 support |
+| **Build System** | Alire package manager |
+| **SPARK Toolchain** | gnatprove for formal verification (optional) |
 
-### 2.5 Assumptions and Dependencies
+### 2.5 Design and Implementation Constraints
 
-- Alire 2.0+ available for dependency management
-- `functional` crate available (Result/Option monad implementation)
-- `tzif` crate available (timezone data queries)
-- GNAT toolchain installed via Alire
-- For embedded: target-specific RTC hardware available
+| Constraint | Description |
+|------------|-------------|
+| **No Heap Allocation** | All types must be stack-allocated for embedded compatibility |
+| **Bounded Strings** | Use GNATCOLL.Strings.Bounded_String, not unbounded strings |
+| **No Exceptions in Domain** | Use Result monad for all error conditions |
+| **SPARK Compatibility** | Domain and Application layers must be SPARK-compatible |
+| **Layer Dependencies** | Strict dependency rules: Domain → Application → Infrastructure → API |
+| **Single Source of Truth** | tzif is the only source for timezone data (no caching in Domain) |
 
-#### 2.5.1 Platform-Specific Notes
+### 2.6 Assumptions and Dependencies
 
-**POSIX Systems (Linux, macOS, BSD)**:
-- TZif files typically pre-installed at `/usr/share/zoneinfo/`
-- System timezone detected via `/etc/localtime` symlink
-- No additional configuration required for most systems
-
-**Windows (10/Server 2022+)**:
-- User must provide path to IANA tzdata directory
-- Download tzdata from <https://www.iana.org/time-zones>
-- System timezone detected via Win32 API (`GetDynamicTimeZoneInformation`)
-- Windows timezone names automatically mapped to IANA zone IDs via CLDR data
-- Underlying tzif library handles Windows platform abstraction
+- IANA timezone database files are available at runtime (managed by tzif)
+- System clock is reasonably accurate (embedded systems may use RTC)
+- Nanosecond precision is sufficient (no leap second support)
+- Integer_64 nanoseconds provide adequate range (±292 years from epoch)
 
 ---
 
@@ -140,406 +144,398 @@ Zoneinfo is a library designed to be imported by Ada applications requiring time
 
 ### 3.1 Domain Layer Requirements
 
-#### REQ-DOM-001: Instant Value Object
+#### FR-01: Instant Value Object
 
-**Description:** The system SHALL provide an Instant value object representing an absolute moment in time.
+The system SHALL provide an Instant type representing an absolute moment in time.
 
-**Acceptance Criteria:**
+- **FR-01.1** Instant SHALL be stored as nanoseconds since Unix epoch (Integer_64)
+- **FR-01.2** Instant SHALL support construction from epoch seconds and nanoseconds
+- **FR-01.3** Instant SHALL support comparison operators (=, <, <=, >, >=)
+- **FR-01.4** Instant SHALL support arithmetic with Duration (Add, Subtract, Diff)
+- **FR-01.5** Instant arithmetic SHALL return Result types for overflow protection
+- **FR-01.6** Instant SHALL provide conversion to Unix epoch components
 
-- Instant is immutable after creation
-- Internally stored as nanoseconds since Unix epoch (Integer_64)
-- Provides conversion to/from Unix epoch (seconds, nanoseconds)
-- Supports addition and subtraction of Duration
-- Supports difference calculation returning Duration
-- Comparable and hashable
+#### FR-02: Zoned Value Object
 
-#### REQ-DOM-002: Zoned Value Object
+The system SHALL provide a Zoned type representing an Instant with timezone context.
 
-**Description:** The system SHALL provide a Zoned value object representing an Instant with timezone context.
+- **FR-02.1** Zoned SHALL contain an Instant and a Zone_ID
+- **FR-02.2** Zoned SHALL support equality based on both Instant and Zone_ID
+- **FR-02.3** Zoned SHALL support timezone change while preserving the absolute instant
+- **FR-02.4** Zoned SHALL NOT cache UTC offset (tzif is single source of truth)
+- **FR-02.5** Zoned SHALL support comparison based on underlying Instant
 
-**Acceptance Criteria:**
+#### FR-03: Civil Value Object
 
-- Zoned is immutable after creation
-- Contains an Instant and a Zone_ID
-- Provides conversion to Instant (extraction)
-- Provides conversion to Civil (always succeeds)
-- Provides timezone change operation (With_Zone)
-- Two Zoned values with same Instant but different zones are NOT equal
+The system SHALL provide a Civil type representing timezone-blind calendar components.
 
-#### REQ-DOM-003: Civil Value Object
+- **FR-03.1** Civil SHALL contain year, month, day, hour, minute, second, nanosecond
+- **FR-03.2** Civil SHALL validate component ranges at construction
+- **FR-03.3** Civil SHALL validate day-in-month for given year/month (including leap years)
+- **FR-03.4** Civil SHALL support comparison operators
+- **FR-03.5** Civil SHALL provide leap year detection
+- **FR-03.6** Civil SHALL provide days-in-month calculation
 
-**Description:** The system SHALL provide a Civil value object representing timezone-blind calendar components.
+#### FR-04: Duration Value Object
 
-**Acceptance Criteria:**
+The system SHALL provide a Duration_Type representing time spans.
 
-- Civil is immutable after creation
-- Contains: Year, Month, Day, Hour, Minute, Second, Nanosecond
-- All components use bounded types with valid ranges
-- Provides accessor functions for all components
-- Conversion to Zoned may fail (DST gaps/overlaps)
+- **FR-04.1** Duration SHALL be stored as seconds (Integer_64) and nanoseconds (0..999_999_999)
+- **FR-04.2** Duration SHALL support construction from seconds, milliseconds, nanoseconds
+- **FR-04.3** Duration SHALL support arithmetic operations (Add, Subtract, Negate)
+- **FR-04.4** Duration SHALL support comparison operators
+- **FR-04.5** Duration SHALL support conversion to total seconds/milliseconds/nanoseconds
+- **FR-04.6** Duration SHALL provide absolute value calculation
 
-#### REQ-DOM-004: Duration_Type Value Object
+#### FR-05: Zone_ID Value Object
 
-**Description:** The system SHALL provide a Duration_Type value object representing a time span.
+The system SHALL provide a Zone_ID type for IANA timezone identifiers.
 
-**Acceptance Criteria:**
+- **FR-05.1** Zone_ID SHALL use bounded strings (max 63 characters)
+- **FR-05.2** Zone_ID SHALL support construction from string with validation
+- **FR-05.3** Zone_ID SHALL provide UTC constant
+- **FR-05.4** Zone_ID SHALL support equality comparison
+- **FR-05.5** Zone_ID SHALL provide conversion to string
 
-- Duration_Type is immutable after creation
-- Contains: Seconds (Integer_64) and Nanoseconds (0..999_999_999)
-- Supports positive and negative durations
-- Provides construction from seconds, milliseconds, nanoseconds
-- Provides conversion to total seconds or nanoseconds
-- Supports addition of durations
-- Supports negation
+#### FR-06: Error Handling
 
-#### REQ-DOM-005: Zone_ID Value Object
+The system SHALL provide comprehensive error types for all failure modes.
 
-**Description:** The system SHALL provide a Zone_ID value object representing an IANA timezone identifier.
-
-**Acceptance Criteria:**
-
-- Zone_ID is immutable after creation
-- Contains bounded string for timezone name
-- Provides UTC constant for convenience
-- Validation via tzif library
-- Provides Is_UTC query function
-
-#### REQ-DOM-006: Error Types
-
-**Description:** The system SHALL define structured error types for all failure modes.
-
-**Acceptance Criteria:**
-
-- Error includes Kind enumeration
-- Error includes human-readable Message
-- Error Kinds include: Validation_Error, Timezone_Error, Overflow_Error, Ambiguous_Time_Error, Gap_Time_Error, IO_Error, Internal_Error
-
-#### REQ-DOM-007: Result Monad
-
-**Description:** The system SHALL use Result[T] for all fallible operations.
-
-**Acceptance Criteria:**
-
-- Result is either Ok(value) or Error(error_info)
-- No exceptions raised for expected errors
-- Type-safe value extraction
-- Copied from functional crate into Domain layer (loose coupling)
+- **FR-06.1** Error_Type SHALL contain Error_Kind and bounded error message
+- **FR-06.2** Error_Kind SHALL distinguish: Validation, Timezone, Overflow, Ambiguous_Time, Gap_Time, IO, Internal
+- **FR-06.3** Result monad SHALL be used for all fallible operations
+- **FR-06.4** NO exceptions SHALL be raised in Domain or Application layers
 
 ### 3.2 Application Layer Requirements
 
-#### REQ-APP-001: Clock Port Signature
+#### FR-07: Clock Port
 
-**Description:** The system SHALL define a Clock_Port signature for time source abstraction.
+The system SHALL define a Clock_Port interface for pluggable time sources.
 
-**Acceptance Criteria:**
+- **FR-07.1** Clock_Port SHALL define Now_UTC returning Result[Instant]
+- **FR-07.2** Clock_Port SHALL define Now_Zoned taking Zone_ID, returning Result[Zoned]
+- **FR-07.3** Clock_Port SHALL be implemented by Infrastructure adapters
+- **FR-07.4** Clock_Port SHALL use Result monad for error propagation
 
-- Generic formal package defining Now() -> Result[Instant]
-- Optionally defines Now_Monotonic() -> Result[Monotonic_Instant]
-- No implementation details in signature
-- Compile-time binding via generic instantiation
+#### FR-08: Timezone Port
 
-#### REQ-APP-002: Now Use Case
+The system SHALL define a Timezone_Port interface for timezone operations.
 
-**Description:** The system SHALL provide a use case for retrieving current time as Instant.
+- **FR-08.1** Timezone_Port SHALL delegate to tzif for all timezone data
+- **FR-08.2** Timezone_Port SHALL provide Civil to Instant conversion for given Zone_ID
+- **FR-08.3** Timezone_Port SHALL provide Instant to Civil conversion for given Zone_ID
+- **FR-08.4** Timezone_Port SHALL handle DST transitions (gaps and overlaps)
+- **FR-08.5** Timezone_Port SHALL validate Zone_ID existence
 
-**Acceptance Criteria:**
+#### FR-09: Use Cases
 
-- Generic over Clock_Port
-- Returns Result[Instant]
-- Delegates to clock adapter
+The system SHALL provide use cases for core datetime operations.
 
-#### REQ-APP-003: Now_Zoned Use Case
-
-**Description:** The system SHALL provide a use case for retrieving current time in a specified timezone.
-
-**Acceptance Criteria:**
-
-- Generic over Clock_Port
-- Accepts Zone_ID parameter
-- Returns Result[Zoned]
-- Combines clock time with timezone
-
-#### REQ-APP-004: Now_UTC Use Case
-
-**Description:** The system SHALL provide a convenience use case for retrieving current UTC time.
-
-**Acceptance Criteria:**
-
-- Generic over Clock_Port
-- Returns Result[Zoned] with UTC zone
-- Shorthand for Now_Zoned(Zone_ID.UTC)
+- **FR-09.1** Get_Now use case SHALL retrieve current time via Clock_Port
+- **FR-09.2** Timezone_Ops use case SHALL perform Zoned ↔ Civil conversions via Timezone_Port
+- **FR-09.3** Discovery use case SHALL list available timezones via Timezone_Port
 
 ### 3.3 Infrastructure Layer Requirements
 
-#### REQ-INF-001: Desktop_Clock Adapter
+#### FR-10: Desktop Clock Adapter
 
-**Description:** The system SHALL provide a Desktop_Clock adapter using Ada.Calendar.
+The system SHALL provide a Desktop_Clock adapter using Ada.Calendar.
 
-**Acceptance Criteria:**
+- **FR-10.1** Desktop_Clock SHALL implement Clock_Port interface
+- **FR-10.2** Desktop_Clock SHALL convert Ada.Calendar.Time to Instant
+- **FR-10.3** Desktop_Clock SHALL use Functional.Try for exception handling
+- **FR-10.4** Desktop_Clock SHALL map Ada.Calendar exceptions to Domain errors
 
-- Implements Clock_Port contract
-- Uses Ada.Calendar for wall clock time
-- Uses Ada.Real_Time for monotonic time (if needed)
-- Default adapter for desktop/server applications
-- Returns appropriate errors on failure
+#### FR-11: Embedded Clock Adapter (Reference)
 
-#### REQ-INF-002: STM32F769I_Clock Adapter
+The system SHALL provide an STM32F769I_Clock reference adapter.
 
-**Description:** The system SHALL provide a reference embedded clock adapter for STM32F769I.
+- **FR-11.1** Embedded clock SHALL implement Clock_Port interface
+- **FR-11.2** Embedded clock SHALL use hardware RTC (Real-Time Clock)
+- **FR-11.3** Embedded clock SHALL be SPARK-compatible where possible
+- **FR-11.4** Embedded clock design SHALL guide other embedded adaptations
 
-**Acceptance Criteria:**
+#### FR-12: TZif Adapter
 
-- Implements Clock_Port contract
-- Reads RTC hardware registers directly
-- Uses SysTick for monotonic time
-- No heap allocation, no standard runtime
-- Interrupt-safe implementation
-- Serves as reference for other embedded targets
+The system SHALL provide a tzif adapter implementing Timezone_Port.
 
-#### REQ-INF-003: Mock_Clock Adapter
+- **FR-12.1** TZif adapter SHALL delegate timezone queries to tzif library
+- **FR-12.2** TZif adapter SHALL use Functional.Try for exception handling
+- **FR-12.3** TZif adapter SHALL map tzif exceptions to Domain errors
+- **FR-12.4** TZif adapter SHALL validate Zone_ID before queries
 
-**Description:** The system SHALL provide a Mock_Clock adapter for testing.
+#### FR-13: Console Writer Adapter
 
-**Acceptance Criteria:**
+The system SHALL provide a Console_Writer adapter for output operations.
 
-- Implements Clock_Port contract
-- Allows setting fixed time
-- Allows advancing time by duration
-- Enables deterministic tests
-- Supports time travel scenarios
+- **FR-13.1** Console_Writer SHALL implement Writer_Port interface
+- **FR-13.2** Console_Writer SHALL use Ada.Text_IO for console output
+- **FR-13.3** Console_Writer SHALL use Functional.Try for exception handling
 
 ### 3.4 API Layer Requirements
 
-#### REQ-API-001: API.Desktop Composition Root
+#### FR-14: API Facade
 
-**Description:** The system SHALL provide a desktop composition root.
+The system SHALL provide a public API facade re-exporting Domain types.
 
-**Acceptance Criteria:**
+- **FR-14.1** API SHALL re-export Instant, Zoned, Civil, Duration_Type, Zone_ID
+- **FR-14.2** API SHALL re-export Result types for all domain types
+- **FR-14.3** API SHALL re-export Error types and Error_Kind constants
+- **FR-14.4** API SHALL provide package renames for convenience
 
-- Wires Desktop_Clock adapter
-- Provides Now(), Now_Zoned(Zone), Now_UTC() functions
-- SPARK_Mode(Off) for I/O wiring
-- Default entry point for desktop applications
+#### FR-15: API.Desktop
 
-#### REQ-API-002: API.Embedded.STM32F769I Composition Root
+The system SHALL provide API.Desktop as the default composition root.
 
-**Description:** The system SHALL provide an embedded composition root for STM32F769I.
+- **FR-15.1** API.Desktop SHALL wire Desktop_Clock to application use cases
+- **FR-15.2** API.Desktop SHALL provide Now_UTC, Now_Zoned, Now functions
+- **FR-15.3** API.Desktop SHALL provide Zoned ↔ Civil conversion operations
+- **FR-15.4** API.Desktop SHALL provide timezone operations (UTC_Offset, With_Zone)
 
-**Acceptance Criteria:**
+#### FR-16: API.Operations
 
-- Wires STM32F769I_Clock adapter
-- Provides same interface as API.Desktop
-- SPARK_Mode(Off) for hardware I/O
-- Reference implementation for embedded targets
+The system SHALL provide SPARK-safe pure operations in API.Operations.
 
-#### REQ-API-003: API.Operations (SPARK-Safe)
+- **FR-16.1** API.Operations SHALL be SPARK Mode => On
+- **FR-16.2** API.Operations SHALL provide Instant arithmetic operations
+- **FR-16.3** API.Operations SHALL provide Duration operations
+- **FR-16.4** API.Operations SHALL NOT depend on Infrastructure layer
 
-**Description:** The system SHALL provide SPARK-verifiable pure operations.
+#### FR-17: API.Discovery
 
-**Acceptance Criteria:**
+The system SHALL provide timezone discovery operations.
 
-- SPARK_Mode(On) for entire package
-- No clock dependency (pure computation)
-- Operations: Add, Diff, To_Civil, To_Zoned, etc.
-- Generic over domain types only
-- Formally verifiable
+- **FR-17.1** API.Discovery SHALL list available timezones
+- **FR-17.2** API.Discovery SHALL validate Zone_ID existence
+- **FR-17.3** API.Discovery SHALL delegate to tzif for timezone database
 
-#### REQ-API-004: Type Re-exports
+#### FR-18: API.Format and API.Parse
 
-**Description:** The system SHALL re-export domain types through the API layer.
+The system SHALL provide formatting and parsing operations.
 
-**Acceptance Criteria:**
-
-- API packages expose: Instant, Zoned, Civil, Duration_Type, Zone_ID
-- API packages expose: Error, Result types
-- Consumers need only import API packages
+- **FR-18.1** API.Format SHALL format datetime as ISO 8601 string
+- **FR-18.2** API.Format SHALL format Zone_ID to string
+- **FR-18.3** API.Parse SHALL parse Zone_ID from string with validation
 
 ---
 
 ## 4. Non-Functional Requirements
 
-### 4.1 Performance
+### NFR-01: Performance
 
-| Requirement | Target |
-|-------------|--------|
-| Time retrieval latency | < 1ms (excluding hardware access) |
-| Timezone conversion | < 100µs |
-| Memory allocation | Zero heap allocation |
-| Stack usage | < 4KB per operation |
+| Requirement | Criteria |
+|-------------|----------|
+| **NFR-01.1** | Instant arithmetic SHALL complete in O(1) time |
+| **NFR-01.2** | Duration operations SHALL complete in O(1) time |
+| **NFR-01.3** | Timezone conversions SHALL complete in O(log n) time (delegated to tzif) |
+| **NFR-01.4** | No heap allocation SHALL occur in any operation |
 
-### 4.2 Reliability
+### NFR-02: Reliability
 
-| Requirement | Description |
-|-------------|-------------|
-| Error handling | All errors returned via Result, no exceptions |
-| Overflow protection | All arithmetic checked for overflow |
-| Timezone validation | All Zone_IDs validated via tzif |
-| DST handling | Ambiguous/gap times reported as errors |
+| Requirement | Criteria |
+|-------------|----------|
+| **NFR-02.1** | All fallible operations SHALL use Result monad |
+| **NFR-02.2** | All exceptions at boundaries SHALL be caught by Functional.Try |
+| **NFR-02.3** | No operation SHALL cause unhandled exception propagation |
+| **NFR-02.4** | Overflow detection SHALL occur before arithmetic operations |
 
-### 4.3 Portability
+### NFR-03: Portability
 
-| Requirement | Description |
-|-------------|-------------|
-| Compiler | GNAT 14+ |
-| Desktop Platforms | Linux, macOS, Windows |
-| Embedded Platforms | STM32F769I (reference), extensible to others |
-| Runtime | Full runtime (desktop), Zero-footprint (embedded) |
+| Requirement | Criteria |
+|-------------|----------|
+| **NFR-03.1** | Domain layer SHALL have ZERO platform-specific code |
+| **NFR-03.2** | Platform abstractions SHALL be in Infrastructure layer only |
+| **NFR-03.3** | Library SHALL compile on Linux, macOS, Windows via GNAT |
+| **NFR-03.4** | Embedded targets SHALL be supported via Clock_Port adapters |
 
-### 4.4 Maintainability
+### NFR-04: Maintainability
 
-| Requirement | Description |
-|-------------|-------------|
-| Architecture | 4-layer hexagonal (Domain/Application/Infrastructure/API) |
-| Coupling | Inward dependencies only, loose coupling to dependencies |
-| Testing | Unit tests for each layer, mock clock for deterministic tests |
-| Documentation | Full API documentation, architecture diagrams |
+| Requirement | Criteria |
+|-------------|----------|
+| **NFR-04.1** | Layer dependencies SHALL be enforced by package structure |
+| **NFR-04.2** | All public APIs SHALL have comprehensive docstrings |
+| **NFR-04.3** | Test coverage SHALL achieve ≥90% statement+decision coverage |
+| **NFR-04.4** | CHANGELOG SHALL document all breaking changes |
 
-### 4.5 Security
+### NFR-05: Usability
 
-| Requirement | Description |
-|-------------|-------------|
-| Input validation | All timezone identifiers validated |
-| Bounded types | All strings bounded, prevents buffer overflow |
-| No dynamic memory | Prevents use-after-free, double-free |
-| SPARK compatible | Enables formal verification of pure operations |
+| Requirement | Criteria |
+|-------------|----------|
+| **NFR-05.1** | API.Desktop SHALL provide sensible defaults for common use cases |
+| **NFR-05.2** | Error messages SHALL indicate root cause and suggested resolution |
+| **NFR-05.3** | Quick Start guide SHALL enable first program in <10 minutes |
+| **NFR-05.4** | All examples SHALL compile and run successfully |
 
-### 4.6 SPARK Formal Verification (NFR-06)
+### NFR-06: Platform Abstraction
 
-| ID | Requirement |
-|----|-------------|
-| NFR-06.1 | Domain and Application layers SHALL pass SPARK legality checking (gnatprove --mode=check) |
-| NFR-06.2 | All domain packages SHALL use `SPARK_Mode => On` |
-| NFR-06.3 | Application port interfaces SHALL use `SPARK_Mode => On` |
-| NFR-06.4 | No runtime errors provable in domain layer (overflow, range, division) |
-| NFR-06.5 | All domain variables SHALL be properly initialized before use |
-| NFR-06.6 | Pre/postconditions on domain operations SHALL be proven correct |
-| NFR-06.7 | SPARK verification SHALL be runnable via `make spark-check` |
-| NFR-06.8 | Infrastructure/API layers may use `SPARK_Mode => Off` for I/O operations |
+| Requirement | Criteria |
+|-------------|----------|
+| **NFR-06.1** | Clock_Port SHALL abstract all time source implementations |
+| **NFR-06.2** | Timezone_Port SHALL abstract tzif library dependency |
+| **NFR-06.3** | Writer_Port SHALL abstract console/file/embedded output |
+| **NFR-06.4** | API composition roots SHALL wire adapters to ports |
 
-**Verification Scope:**
+### NFR-07: SPARK Verification
 
-| Layer | SPARK_Mode | Rationale |
-|-------|-----------|-----------|
-| Domain.* | On | Pure business logic, provable |
-| Application.Command.* | On | Commands, provable |
-| Application.Port.* | On | Interface contracts |
-| Application.UseCase.* | On | Use case logic |
-| Infrastructure.* | Off | I/O operations |
-| API.* | Off | Facade over infrastructure |
+| Requirement | Criteria |
+|-------------|----------|
+| **NFR-07.1** | Domain layer SHALL pass gnatprove --mode=check |
+| **NFR-07.2** | Application layer SHALL pass gnatprove --mode=check |
+| **NFR-07.3** | Infrastructure layer SPARK_Mode => Off (uses Ada.Calendar, Ada.Text_IO) |
+| **NFR-07.4** | API.Operations SHALL be provable with --mode=prove |
 
----
+### NFR-08: Testability
 
-## 5. Interface Requirements
-
-### 5.1 User Interfaces
-
-None - this is a library, not an application.
-
-### 5.2 Software Interfaces
-
-#### 5.2.1 Alire Integration
-
-```toml
-[[depends-on]]
-zoneinfo = "*"
-```
-
-#### 5.2.2 Desktop API Usage
-
-```ada
-with Zoneinfo.API.Desktop;
-use Zoneinfo.API.Desktop;
-
--- Get current UTC time
-UTC_Now : constant Zoned_Result := Now_UTC;
-
--- Get current time in a specific timezone
-Zone    : constant Zone_ID := Zone_ID.From_String ("America/New_York");
-Local   : constant Zoned_Result := Now_Zoned (Zone);
-
--- Convert to civil time
-if Local.Is_Ok then
-   Civil_Time : constant Civil := To_Civil (Local.Value);
-end if;
-```
-
-#### 5.2.3 Pure Operations (SPARK-Safe)
-
-```ada
-with Zoneinfo.API.Operations;
-use Zoneinfo.API.Operations;
-
--- Add duration to instant
-New_Time : constant Instant_Result := Add (Some_Instant, Some_Duration);
-
--- Calculate difference
-Diff : constant Duration_Type := Diff (End_Time, Start_Time);
-```
-
-### 5.3 Hardware Interfaces
-
-#### 5.3.1 STM32F769I RTC Interface
-
-- RTC registers for wall clock time
-- SysTick for monotonic time
-- Direct register access (no HAL dependency)
+| Requirement | Criteria |
+|-------------|----------|
+| **NFR-08.1** | Unit tests SHALL cover all Domain and Application layer packages |
+| **NFR-08.2** | Integration tests SHALL cover all Infrastructure adapters |
+| **NFR-08.3** | Mock_Clock adapter SHALL enable deterministic testing |
+| **NFR-08.4** | All 510 tests (356 unit + 154 integration) SHALL pass |
 
 ---
 
-## 6. Traceability Matrix
+## 5. System Requirements
 
-| Requirement | Design Component | Test |
-|-------------|------------------|------|
-| REQ-DOM-001 | Domain.Value_Object.Instant | test_instant.adb |
-| REQ-DOM-002 | Domain.Value_Object.Zoned | test_zoned.adb |
-| REQ-DOM-003 | Domain.Value_Object.Civil | test_civil.adb |
-| REQ-DOM-004 | Domain.Value_Object.Duration_Type | test_duration.adb |
-| REQ-DOM-005 | Domain.Value_Object.Zone_ID | test_zone_id.adb |
-| REQ-DOM-006 | Domain.Error | test_error.adb |
-| REQ-DOM-007 | Domain.Error.Result | test_result.adb |
-| REQ-APP-001 | Application.Port.Clock_Port | test_clock_port.adb |
-| REQ-APP-002 | Application.UseCase.Now | test_now.adb |
-| REQ-APP-003 | Application.UseCase.Now_Zoned | test_now_zoned.adb |
-| REQ-APP-004 | Application.UseCase.Now_UTC | test_now_utc.adb |
-| REQ-INF-001 | Infrastructure.Adapter.Desktop_Clock | test_desktop_clock.adb |
-| REQ-INF-002 | Infrastructure.Adapter.STM32F769I_Clock | test_embedded_clock.adb |
-| REQ-INF-003 | Infrastructure.Adapter.Mock_Clock | test_mock_clock.adb |
-| REQ-API-001 | Zoneinfo.API.Desktop | test_api_desktop.adb |
-| REQ-API-002 | Zoneinfo.API.Embedded.STM32F769I | test_api_embedded.adb |
-| REQ-API-003 | Zoneinfo.API.Operations | test_api_operations.adb |
-| REQ-API-004 | Zoneinfo.API.* | test_api_types.adb |
+### 5.1 Hardware Requirements
+
+| Component | Desktop | Embedded (Reference) |
+|-----------|---------|---------------------|
+| **CPU** | x86_64, ARM64 | ARM Cortex-M7 |
+| **RAM** | ≥ 4 MB available | ≥ 64 KB available |
+| **Storage** | ≥ 100 MB for timezone database | ≥ 512 KB for subset |
+| **RTC** | System clock | Hardware RTC (STM32F769I) |
+
+### 5.2 Software Requirements
+
+| Component | Version | Purpose |
+|-----------|---------|---------|
+| **Alire** | 2.0+ | Package manager and build system |
+| **GNAT** | 13+ | Ada 2022 compiler |
+| **gnatprove** | 14.2+ | SPARK formal verification (optional) |
+| **Make** | Any | Convenience targets |
+| **Python** | 3.8+ | Release automation scripts |
 
 ---
 
-## 7. Appendices
+## 6. Interface Requirements
 
-### A. Datetime Conversion Reference
+### 6.1 User Interfaces
 
-```
-Instant ──────────────────► Zoned (add zone)
-   ▲                           │
-   │                           │
-   └───────────────────────────┘ (extract instant)
-                               │
-                               ▼
-                            Civil (always succeeds)
-                               │
-                               ▼
-                            Zoned (may fail: DST gaps/overlaps)
-```
+Not applicable. Zoneinfo is a library with programmatic API only.
 
-### B. UTC Convenience
+### 6.2 Software Interfaces
 
-- `Zone_ID.UTC` - Constant for UTC zone
-- `Now_UTC()` - Shorthand for `Now_Zoned(Zone_ID.UTC)`
-- `To_UTC(Zoned)` - Convert any Zoned to UTC
+#### 6.2.1 tzif Library Interface
 
-### C. Glossary
+| Operation | Purpose |
+|-----------|---------|
+| **Query_UTC_Offset** | Get UTC offset for Zone_ID at given Instant |
+| **Instant_To_Civil** | Convert Instant to Civil components for given Zone_ID |
+| **Civil_To_Instant** | Convert Civil to Instant for given Zone_ID (handles DST) |
+| **List_Timezones** | Enumerate available IANA timezone identifiers |
+| **Validate_Zone_ID** | Check if Zone_ID exists in timezone database |
 
-See Section 1.3 Definitions.
+#### 6.2.2 functional Library Interface
 
-### D. Change History
+| Operation | Purpose |
+|-----------|---------|
+| **Result Monad** | Generic_Result for error handling |
+| **Option Monad** | Generic_Option for optional values |
+| **Try Pattern** | Try_To_Result for exception boundary conversion |
 
-| Version | Date | Author | Changes |
-|---------|------|--------|---------|
-| 1.0.0 | 2025-12-03 | Michael Gardner | Initial zoneinfo-specific SRS |
+### 6.3 Hardware Interfaces
+
+#### 6.3.1 Desktop System Clock
+
+- Uses Ada.Calendar.Clock for current time retrieval
+- Precision: implementation-defined (typically milliseconds)
+
+#### 6.3.2 Embedded RTC (STM32F769I Reference)
+
+- Uses STM32 RTC peripheral registers
+- Precision: seconds (hardware limitation)
+- Requires RTC initialization in board support package
+
+---
+
+## 7. Verification and Validation
+
+### 7.1 Verification Methods
+
+| Requirement Category | Verification Method |
+|---------------------|---------------------|
+| **Functional Requirements** | Unit tests, integration tests |
+| **Performance Requirements** | Benchmarks, profiling |
+| **SPARK Requirements** | gnatprove formal verification |
+| **Portability Requirements** | Multi-platform CI builds |
+| **Error Handling** | Negative test cases |
+
+### 7.2 Requirements Traceability
+
+See Software Test Guide (STG) Section 8 for complete Requirements → Tests traceability matrix.
+
+### 7.3 Test Coverage Goals
+
+| Test Category | Location | Goal |
+|---------------|----------|------|
+| **Unit Tests** | test/unit/ | ≥90% statement+decision coverage |
+| **Integration Tests** | test/integration/ | All adapters and use cases |
+| **SPARK Checks** | Domain + Application | 100% legality verification |
+
+---
+
+## 8. Appendices
+
+### Appendix A: Glossary
+
+| Term | Definition |
+|------|------------|
+| **Adapter** | Infrastructure component implementing a Port interface |
+| **Bounded Type** | Type with compile-time size limit (no heap allocation) |
+| **Composition Root** | API layer package wiring adapters to ports (dependency injection) |
+| **DST Gap** | Non-existent civil time during spring-forward transition |
+| **DST Overlap** | Ambiguous civil time during fall-back transition |
+| **Epoch** | Unix epoch: 1970-01-01 00:00:00 UTC |
+| **Hexagonal Architecture** | Port-and-adapter pattern for platform abstraction |
+| **Port** | Application layer interface defining required capabilities |
+| **Railway-Oriented Programming** | Composing operations via Result monad chaining |
+| **Value Object** | Immutable domain object identified by its values (DDD pattern) |
+
+### Appendix B: Datetime Type Summary
+
+| Type | Purpose | Example |
+|------|---------|---------|
+| **Instant** | Absolute time, epoch-based | 1700000000 seconds + 500000000 nanos |
+| **Zoned** | Instant + timezone | Instant + "America/New_York" |
+| **Civil** | Wall-clock components | 2025-12-15 14:30:00.0 (timezone-blind) |
+| **Duration** | Time span | 3600 seconds + 0 nanos (1 hour) |
+| **Zone_ID** | IANA timezone identifier | "America/New_York", "UTC", "Europe/London" |
+
+### Appendix C: Error Kind Reference
+
+| Error_Kind | Description | Example Trigger |
+|------------|-------------|----------------|
+| **Validation_Error** | Invalid input parameters | Civil day 32, month 13 |
+| **Timezone_Error** | Invalid Zone_ID | Zone_ID "Invalid/Zone" |
+| **Overflow_Error** | Arithmetic overflow | Instant + Duration exceeds Integer_64 |
+| **Ambiguous_Time_Error** | DST fall-back overlap | Civil time occurs twice |
+| **Gap_Time_Error** | DST spring-forward gap | Civil time doesn't exist |
+| **IO_Error** | Input/output failure | Clock read failure, timezone file missing |
+| **Internal_Error** | Unexpected system state | Library internal invariant violation |
+
+### Appendix D: Layer Responsibilities
+
+| Layer | Responsibility | SPARK Mode |
+|-------|---------------|------------|
+| **Domain** | Value objects, business rules | On (check) |
+| **Application** | Use cases, port definitions | On (check) |
+| **Infrastructure** | Adapters, external libraries | Off (uses Ada.Calendar, etc.) |
+| **API** | Public facade, composition roots | Operations: On, Others: Off |
+
+---
+
+**Document Control:**
+- Version: 1.0.0
+- Last Updated: 2025-12-15
+- Status: Released

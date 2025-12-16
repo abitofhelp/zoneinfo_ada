@@ -1,11 +1,11 @@
 # TZif API Mapping Guide
 
 **Version:** 1.0.0
-**Date:** December 04, 2025
+**Date:** December 15, 2025
 **SPDX-License-Identifier:** BSD-3-Clause<br>
 **License File:** See the LICENSE file in the project root<br>
 **Copyright:** © 2025 Michael Gardner, A Bit of Help, Inc.<br>
-**Status:** In Development
+**Status:** Released
 
 ---
 
@@ -241,7 +241,7 @@ The Tzif_Adapter delegates all platform-specific operations to TZif:
 | Linux/BSD/macOS | `/usr/share/zoneinfo` | `/etc/localtime` symlink |
 | Windows 10+ | User-provided path | Win32 API + CLDR mapping |
 
-See [TZif Quick Start](../../tzif/docs/quick_start.md) for platform setup details.
+See the [TZif repository](https://github.com/abitofhelp/tzif_ada) for platform setup details.
 
 ---
 
@@ -255,7 +255,7 @@ See [TZif Quick Start](../../tzif/docs/quick_start.md) for platform setup detail
 
 **Document Control**:
 - Version: 1.0.0
-- Last Updated: 2025-12-04
-- Status: In Development
+- Last Updated: 2025-12-15
+- Status: Released
 - Copyright © 2025 Michael Gardner, A Bit of Help, Inc.
 - License: BSD-3-Clause

@@ -33,6 +33,7 @@ pragma Ada_2022;
 --  =========================================================================
 
 with Ada.Strings.Bounded;
+with Zoneinfo_Config;
 
 package Domain.Error
   with Preelaborate
@@ -43,8 +44,10 @@ is
    --  ========================================================================
 
    --  Using bounded string for error messages (memory safe, no heap)
+   --  Size configured per profile in Zoneinfo_Config
    package Error_Strings is new
-     Ada.Strings.Bounded.Generic_Bounded_Length (Max => 512);
+     Ada.Strings.Bounded.Generic_Bounded_Length
+       (Max => Zoneinfo_Config.Max_Error_Length);
 
    --  ========================================================================
    --  Error Kind Enumeration
