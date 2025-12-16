@@ -1,7 +1,7 @@
 # Changelog
 
 **Version:** 1.0.0<br>
-**Date:** December 15, 2025<br>
+**Date:** 2025-12-15<br>
 **SPDX-License-Identifier:** BSD-3-Clause<br>
 **License File:** See the LICENSE file in the project root<br>
 **Copyright:** © 2025 Michael Gardner, A Bit of Help, Inc.<br>
@@ -28,6 +28,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.0] - 2025-12-15
 
+**Tests:** 510 (356 unit + 154 integration) - All passing<br>
+**SPARK:** Checked (Domain + Application layers)
+
 Initial release of the Zoneinfo timezone-aware datetime library for Ada 2022.
 
 ### Added
@@ -53,8 +56,10 @@ Initial release of the Zoneinfo timezone-aware datetime library for Ada 2022.
 
 - **Datetime Formatting** (`Zoneinfo.API.Format`)
   - Format as ISO 8601: `To_ISO_8601`
-  - Format with custom patterns: `Format_Civil`
+  - Format with offset: `To_ISO_8601_With_Offset`
   - Format with timezone: `To_ISO_8601_With_Zone`
+  - Format date/time portions: `To_ISO_Date`, `To_ISO_Time`
+  - Format durations: `To_ISO_Duration`, `To_Human_Duration`
 
 - **Timezone Discovery** (`Zoneinfo.API.Discovery`)
   - Discover timezone sources: `Discover_Sources`
