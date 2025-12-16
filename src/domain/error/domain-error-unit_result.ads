@@ -25,4 +25,5 @@ with Domain.Error.Result;
 with Domain.Unit;
 
 package Domain.Error.Unit_Result is new Domain.Error.Result.Generic_Result
-  (T => Domain.Unit.Unit);
+  (T => Domain.Unit.Unit)
+  with Preelaborate;

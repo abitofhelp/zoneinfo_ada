@@ -44,7 +44,7 @@ with Domain.Value_Object.Duration_Type;
 use Domain.Value_Object.Duration_Type;
 
 package Domain.Value_Object.Civil
-  with Preelaborate
+  with Preelaborate, SPARK_Mode => On
 is
    --  ========================================================================
    --  Component Types (Bounded Ranges)

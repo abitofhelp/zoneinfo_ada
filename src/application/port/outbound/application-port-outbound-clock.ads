@@ -39,7 +39,7 @@ pragma Ada_2022;
 with Domain.Value_Object.Instant;
 
 package Application.Port.Outbound.Clock
-  with Preelaborate
+  with Preelaborate, SPARK_Mode => On
 is
    --  ========================================================================
    --  Clock_Port Signature

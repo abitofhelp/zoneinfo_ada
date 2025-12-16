@@ -48,7 +48,7 @@ with Domain.Value_Object.Zone_ID;
 with Domain.Error.Result;
 
 package Domain.Value_Object.Zoned
-  with Preelaborate
+  with Preelaborate, SPARK_Mode => On
 is
    --  ========================================================================
    --  Re-exports for convenience

@@ -30,7 +30,7 @@ pragma Ada_2022;
 --  =========================================================================
 
 package Application.Usecase
-  with Pure
+  with Pure, SPARK_Mode => On
 is
 
 end Application.Usecase;

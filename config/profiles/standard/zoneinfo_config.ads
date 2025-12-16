@@ -75,4 +75,28 @@ package Zoneinfo_Config is
    --  Standard profile: 100 paths
    Max_Search_Paths : constant := 100;
 
+   --  Maximum zones returned by List_All_Zones
+   --  IANA tzdb has ~600 zones; 750 provides growth margin
+   Max_Zone_List_Size : constant := 750;
+
+   --  Maximum zones returned by Find_By_* search operations
+   --  Typical searches return 10-50 matches
+   Max_Search_Results : constant := 100;
+
+   --  =======================================================================
+   --  Memory Planning Constants
+   --  =======================================================================
+
+   --  Bounded string overhead (length field + alignment, platform estimate)
+   Bounded_String_Overhead : constant := 8;
+
+   --  Bytes per Zone_ID (for memory planning)
+   Zone_ID_Size_Bytes : constant := Max_Zone_ID_Length + Bounded_String_Overhead;
+
+   --  Memory estimates (bytes)
+   Zone_List_Memory_Bytes : constant :=
+     Max_Zone_List_Size * Zone_ID_Size_Bytes;  --  ~54KB
+   Search_Results_Memory_Bytes : constant :=
+     Max_Search_Results * Zone_ID_Size_Bytes;  --  ~7.2KB
+
 end Zoneinfo_Config;

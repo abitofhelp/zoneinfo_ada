@@ -36,7 +36,7 @@ with Ada.Strings.Bounded;
 with Zoneinfo_Config;
 
 package Domain.Error
-  with Preelaborate
+  with Preelaborate, SPARK_Mode => On
 is
 
    --  ========================================================================

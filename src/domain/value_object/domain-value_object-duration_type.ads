@@ -32,7 +32,7 @@ with Interfaces;
 use Interfaces;
 
 package Domain.Value_Object.Duration_Type
-  with Pure
+  with Pure, SPARK_Mode => On
 is
    --  ========================================================================
    --  Base Types

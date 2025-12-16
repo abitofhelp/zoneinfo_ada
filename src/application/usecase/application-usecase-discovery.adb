@@ -11,7 +11,9 @@ pragma Ada_2022;
 --
 --  ===========================================================================
 
-package body Application.Usecase.Discovery is
+package body Application.Usecase.Discovery
+  with SPARK_Mode => On
+is
 
    --  ========================================================================
    --  Source Management Operations
@@ -56,11 +58,10 @@ package body Application.Usecase.Discovery is
 
    function List_All_Zones
      (Source     : Source_Info;
-      Yield      : Zone_Callback;
-      Descending : Boolean := False) return Unit_Result.Result
+      Descending : Boolean := False) return Zone_List_Result.Result
    is
    begin
-      return Port_List_All_Zones (Source, Yield, Descending);
+      return Port_List_All_Zones (Source, Descending);
    end List_All_Zones;
 
    --  ========================================================================
@@ -68,27 +69,24 @@ package body Application.Usecase.Discovery is
    --  ========================================================================
 
    function Find_By_Pattern
-     (Pattern : String;
-      Yield   : Zone_Callback) return Unit_Result.Result
+     (Pattern : String) return Search_Results_Result.Result
    is
    begin
-      return Port_Find_By_Pattern (Pattern, Yield);
+      return Port_Find_By_Pattern (Pattern);
    end Find_By_Pattern;
 
    function Find_By_Region
-     (Region : String;
-      Yield  : Zone_Callback) return Unit_Result.Result
+     (Region : String) return Search_Results_Result.Result
    is
    begin
-      return Port_Find_By_Region (Region, Yield);
+      return Port_Find_By_Region (Region);
    end Find_By_Region;
 
    function Find_By_Regex
-     (Regex : String;
-      Yield : Zone_Callback) return Unit_Result.Result
+     (Regex : String) return Search_Results_Result.Result
    is
    begin
-      return Port_Find_By_Regex (Regex, Yield);
+      return Port_Find_By_Regex (Regex);
    end Find_By_Regex;
 
 end Application.Usecase.Discovery;

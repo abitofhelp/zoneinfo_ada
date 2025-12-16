@@ -16,7 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Bounded array types** for zone listing - `Zone_List` and `Search_Results` with configurable capacity per profile
+- **Memory planning constants** - `Max_Zone_List_Size`, `Max_Search_Results`, `Zone_ID_Size_Bytes`, `Zone_List_Memory_Bytes`, `Search_Results_Memory_Bytes` in all config profiles
+
 ### Changed
+
+- **Discovery API** - `List_All_Zones` and `Find_By_*` now return `Result[Zone_List/Search_Results]` instead of using callbacks
+- **SPARK_Mode** - Enabled `SPARK_Mode => On` for all Domain and Application layer specs
+- **Removed Zone_Callback** - Eliminated `access procedure` type for SPARK compatibility
 
 ### Deprecated
 

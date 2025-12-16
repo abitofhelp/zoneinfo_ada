@@ -37,7 +37,7 @@ pragma Ada_2022;
 --  =========================================================================
 
 package Domain.Error.Result
-  with Preelaborate
+  with Preelaborate, SPARK_Mode => On
 is
 
    --  ========================================================================

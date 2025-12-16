@@ -36,7 +36,7 @@ pragma Ada_2022;
 --  =========================================================================
 
 package Domain.Types.Option
-  with Preelaborate
+  with Preelaborate, SPARK_Mode => On
 is
 
    --  ========================================================================

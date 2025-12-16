@@ -62,7 +62,7 @@ generic
       return Domain.Value_Object.Duration_Type.Duration_Type;
 
 package Application.Usecase.Timezone_Ops
-  with Preelaborate
+  with Preelaborate, SPARK_Mode => On
 is
    --  Re-export types for convenience
    subtype Instant is Domain.Value_Object.Instant.Instant;

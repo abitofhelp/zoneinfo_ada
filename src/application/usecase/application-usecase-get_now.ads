@@ -36,7 +36,7 @@ generic
    --  Clock port: function to get current time
    with function Now return Domain.Value_Object.Instant.Instant_Result.Result;
 package Application.Usecase.Get_Now
-  with Preelaborate
+  with Preelaborate, SPARK_Mode => On
 is
    --  Re-export types for convenience
    subtype Instant is Domain.Value_Object.Instant.Instant;

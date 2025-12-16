@@ -33,7 +33,7 @@ with Zoneinfo_Config;
 with Domain.Error.Result;
 
 package Domain.Value_Object.Source_Info with
-  Preelaborate
+  Preelaborate, SPARK_Mode => On
 is
 
    --  ========================================================================

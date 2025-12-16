@@ -14,6 +14,7 @@ pragma Ada_2022;
 --    - TZif is PRIVATE - not visible to clients
 --    - Public interface uses only Domain types
 --    - All TZif access is encapsulated in the body
+--    - Returns bounded arrays for SPARK-compatible zone listing
 --
 --  DIP Compliance:
 --    - High-level modules (API, Application) depend on Domain abstractions
@@ -26,7 +27,7 @@ pragma Ada_2022;
 --
 --  See Also:
 --    Domain.Value_Object.Source_Info - Domain source types
---    Domain.Value_Object.Zone_ID - Domain zone ID type
+--    Domain.Value_Object.Zone_ID - Domain zone ID type and bounded arrays
 --    Application.Usecase.Discovery - Use case that uses this adapter
 --  ===========================================================================
 
@@ -56,9 +57,16 @@ package Infrastructure.Adapter.Discovery is
    package Version_Strings renames
      Domain.Value_Object.Source_Info.Version_Strings;
 
-   --  Zone ID from Domain
+   --  Zone ID and list types from Domain
    subtype Zone_ID is Domain.Value_Object.Zone_ID.Zone_ID;
+   subtype Zone_List is Domain.Value_Object.Zone_ID.Zone_List;
+   subtype Search_Results is Domain.Value_Object.Zone_ID.Search_Results;
+
    package Zone_ID_Result renames Domain.Value_Object.Zone_ID.Zone_ID_Result;
+   package Zone_List_Result renames
+     Domain.Value_Object.Zone_ID.Zone_List_Result;
+   package Search_Results_Result renames
+     Domain.Value_Object.Zone_ID.Search_Results_Result;
 
    --  Error types from Domain
    subtype Error_Type is Domain.Error.Error_Type;
@@ -82,9 +90,6 @@ package Infrastructure.Adapter.Discovery is
      (T => Version_String);
 
    pragma Warnings (On, "no entities*");
-
-   --  Zone list callback and result types
-   type Zone_Callback is access procedure (Zone : Zone_ID);
 
    package Unit_Result renames Domain.Error.Unit_Result;
 
@@ -121,35 +126,33 @@ package Infrastructure.Adapter.Discovery is
      (Source : Source_Info) return Version_Result.Result;
 
    --  List all available timezone IDs from a source.
-   --  Calls Yield callback for each zone ID.
+   --  Returns bounded Zone_List or Overflow_Error if exceeds Max_Zone_List_Size.
    function List_All_Zones
-     (Source : Source_Info;
-      Yield  : Zone_Callback;
-      Descending : Boolean := False) return Unit_Result.Result;
+     (Source     : Source_Info;
+      Descending : Boolean := False) return Zone_List_Result.Result;
 
    --  ========================================================================
    --  Pattern-Based Search Operations
    --  ========================================================================
 
    --  Find zones matching a substring pattern.
-   --  Calls Yield callback for each matching zone ID.
+   --  Returns bounded Search_Results or Overflow_Error if exceeds capacity.
    --  Example: Pattern "York" matches "America/New_York"
    function Find_By_Pattern
-     (Pattern : String;
-      Yield   : Zone_Callback) return Unit_Result.Result;
+     (Pattern : String) return Search_Results_Result.Result;
 
    --  Find zones in a geographic region.
    --  Region is the first component of the IANA zone ID.
    --  Example: Region "America" matches "America/New_York", "America/Chicago"
+   --  Returns bounded Search_Results or Overflow_Error if exceeds capacity.
    function Find_By_Region
-     (Region : String;
-      Yield  : Zone_Callback) return Unit_Result.Result;
+     (Region : String) return Search_Results_Result.Result;
 
    --  Find zones matching a regular expression.
    --  Uses GNAT.Regpat for pattern matching.
+   --  Returns bounded Search_Results or Overflow_Error if exceeds capacity.
    function Find_By_Regex
-     (Regex : String;
-      Yield : Zone_Callback) return Unit_Result.Result;
+     (Regex : String) return Search_Results_Result.Result;
 
    --  ========================================================================
    --  Convenience Functions

@@ -45,7 +45,7 @@ pragma Ada_2022;
 with Domain.Error;
 
 package Application.Error
-  with Preelaborate
+  with Preelaborate, SPARK_Mode => On
 is
 
    --  =======================================================================

@@ -21,7 +21,7 @@ pragma Ada_2022;
 --  =========================================================================
 
 package Application.Port
-  with Pure
+  with Pure, SPARK_Mode => On
 is
 
 end Application.Port;

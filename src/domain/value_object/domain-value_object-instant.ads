@@ -43,7 +43,7 @@ with Domain.Value_Object.Duration_Type;
 with Domain.Error.Result;
 
 package Domain.Value_Object.Instant
-  with Preelaborate
+  with Preelaborate, SPARK_Mode => On
 is
    --  ========================================================================
    --  Base Types

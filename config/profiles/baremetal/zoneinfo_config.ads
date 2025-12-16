@@ -73,4 +73,28 @@ package Zoneinfo_Config is
    --  Bare metal profile: 3 paths
    Max_Search_Paths : constant := 3;
 
+   --  Maximum zones returned by List_All_Zones
+   --  Bare metal: minimal - typically single timezone
+   Max_Zone_List_Size : constant := 10;
+
+   --  Maximum zones returned by Find_By_* search operations
+   --  Bare metal profile: minimal result sets
+   Max_Search_Results : constant := 5;
+
+   --  =======================================================================
+   --  Memory Planning Constants
+   --  =======================================================================
+
+   --  Bounded string overhead (length field + alignment, platform estimate)
+   Bounded_String_Overhead : constant := 8;
+
+   --  Bytes per Zone_ID (for memory planning)
+   Zone_ID_Size_Bytes : constant := Max_Zone_ID_Length + Bounded_String_Overhead;
+
+   --  Memory estimates (bytes)
+   Zone_List_Memory_Bytes : constant :=
+     Max_Zone_List_Size * Zone_ID_Size_Bytes;  --  ~720 bytes
+   Search_Results_Memory_Bytes : constant :=
+     Max_Search_Results * Zone_ID_Size_Bytes;  --  ~360 bytes
+
 end Zoneinfo_Config;

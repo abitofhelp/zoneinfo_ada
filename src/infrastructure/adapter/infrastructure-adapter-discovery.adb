@@ -14,6 +14,8 @@ pragma Ada_2022;
 --    - Type Conversion Layer: Domain ↔ TZif at adapter boundary
 --    - TZif is PRIVATE to this body - not exposed in spec
 --    - Converts results from TZif to Domain types before returning
+--    - Returns bounded arrays for SPARK-compatible zone listing
+--    - Returns Overflow_Error if zone count exceeds configured capacity
 --
 --  ===========================================================================
 
@@ -35,6 +37,10 @@ package body Infrastructure.Adapter.Discovery is
      Zoneinfo.TZif_Lib.Domain.Value_Object.Source_Info;
    package TZif_Zone renames Zoneinfo.TZif_Lib.Domain.Value_Object.Zone_Id;
    package TZif_Err renames Zoneinfo.TZif_Lib.Domain.Error;
+
+   --  Import capacity limits from Domain
+   use type Domain.Value_Object.Zone_ID.Zone_List_Index;
+   use type Domain.Value_Object.Zone_ID.Search_Result_Index;
 
    --  ========================================================================
    --  Type Conversion Helpers: Domain → TZif
@@ -287,9 +293,9 @@ package body Infrastructure.Adapter.Discovery is
 
    function List_All_Zones
      (Source     : Source_Info;
-      Yield      : Zone_Callback;
-      Descending : Boolean := False) return Unit_Result.Result
+      Descending : Boolean := False) return Zone_List_Result.Result
    is
+      use Domain.Value_Object.Zone_ID;
       TZif_Source_Val : constant TZif_Source.Source_Info_Type :=
         To_TZif_Source (Source);
       TZif_Result     : constant TZif.Zone_List_Result :=
@@ -297,24 +303,40 @@ package body Infrastructure.Adapter.Discovery is
    begin
       if TZif.List_Zones_Port.List_All_Zones_Result_Package.Is_Ok (TZif_Result)
       then
-         --  Iterate the zone list and call our yield callback
          declare
             Zones : constant TZif.List_Zones_Port.Zone_Id_List :=
               TZif.List_Zones_Port.List_All_Zones_Result_Package.Value
                 (TZif_Result);
+            Zone_Count : constant Natural :=
+              TZif.List_Zones_Port.Zone_Id_Vectors.Length (Zones);
          begin
-            for I in 1 .. TZif.List_Zones_Port.Zone_Id_Vectors.Length (Zones)
-            loop
-               Yield
-                 (To_Domain_Zone
-                    (TZif.List_Zones_Port.Zone_Id_Vectors.Unchecked_Element
-                       (Zones, I)));
-            end loop;
+            --  Check capacity before collecting
+            if Zone_Count > Max_Zone_List_Size then
+               return
+                 Zone_List_Result.Error
+                   (Domain.Error.Overflow_Error,
+                    "Zone count" & Zone_Count'Image &
+                    " exceeds Max_Zone_List_Size" &
+                    Max_Zone_List_Size'Image &
+                    "; increase Zoneinfo_Config.Max_Zone_List_Size");
+            end if;
+
+            --  Collect zones into bounded array
+            declare
+               Result_List : Zone_List (Count => Zone_Count);
+            begin
+               for I in 1 .. Zone_Count loop
+                  Result_List.Items (I) :=
+                    To_Domain_Zone
+                      (TZif.List_Zones_Port.Zone_Id_Vectors.Unchecked_Element
+                         (Zones, I));
+               end loop;
+               return Zone_List_Result.Ok (Result_List);
+            end;
          end;
-         return Unit_Result.Ok (Domain.Unit.Unit_Value);
       else
          return
-           Unit_Result.From_Error
+           Zone_List_Result.From_Error
              (To_Domain_Error
                 (TZif.List_Zones_Port.List_All_Zones_Result_Package.Error_Info
                    (TZif_Result)));
@@ -326,53 +348,86 @@ package body Infrastructure.Adapter.Discovery is
    --  ========================================================================
 
    function Find_By_Pattern
-     (Pattern : String;
-      Yield   : Zone_Callback) return Unit_Result.Result
+     (Pattern : String) return Search_Results_Result.Result
    is
-      --  Wrapper callback to convert TZif Zone_Name_String to Domain Zone_ID
-      procedure Callback_Wrapper
-        (Name : TZif.Find_Pattern_Port.Zone_Name_String)
+      use Domain.Value_Object.Zone_ID;
+
+      --  Accumulator for callback collection
+      Results  : Search_Results (Count => Max_Search_Results);
+      Count    : Natural := 0;
+      Overflow : Boolean := False;
+
+      --  Callback to collect zones into array
+      procedure Collect_Zone (Name : TZif.Find_Pattern_Port.Zone_Name_String)
       is
          Zone_Str : constant String :=
            TZif.Find_Pattern_Port.Zone_Name_Strings.To_String (Name);
       begin
-         Yield (Domain.Value_Object.Zone_ID.Make_Zone_ID (Zone_Str));
-      end Callback_Wrapper;
+         if Count >= Max_Search_Results then
+            Overflow := True;
+         else
+            Count := Count + 1;
+            Results.Items (Count) := Make_Zone_ID (Zone_Str);
+         end if;
+      end Collect_Zone;
 
       TZif_Pattern : constant TZif.Pattern_String :=
         TZif.Find_Pattern_Port.Pattern_Strings.To_Bounded_String (Pattern);
       TZif_Result  : TZif.Pattern_Result;
    begin
       TZif_Result := TZif.Find_By_Pattern
-        (TZif_Pattern, Callback_Wrapper'Unrestricted_Access);
-      if TZif.Find_Pattern_Port.Find_By_Pattern_Result_Package.Is_Ok
-           (TZif_Result)
+        (TZif_Pattern, Collect_Zone'Unrestricted_Access);
+
+      if not TZif.Find_Pattern_Port.Find_By_Pattern_Result_Package.Is_Ok
+               (TZif_Result)
       then
-         return Unit_Result.Ok (Domain.Unit.Unit_Value);
-      else
          declare
             Err : constant TZif_Err.Error_Type :=
               TZif.Find_Pattern_Port.Find_By_Pattern_Result_Package.Error_Info
                 (TZif_Result);
          begin
-            return Unit_Result.From_Error (To_Domain_Error (Err));
+            return Search_Results_Result.From_Error (To_Domain_Error (Err));
          end;
       end if;
+
+      if Overflow then
+         return
+           Search_Results_Result.Error
+             (Domain.Error.Overflow_Error,
+              "Pattern '" & Pattern &
+              "' matched more than Max_Search_Results" &
+              Max_Search_Results'Image &
+              "; refine pattern or increase Zoneinfo_Config.Max_Search_Results"
+             );
+      end if;
+
+      --  Return with actual count
+      return Search_Results_Result.Ok ((Count => Count, Items => Results.Items));
    end Find_By_Pattern;
 
    function Find_By_Region
-     (Region : String;
-      Yield  : Zone_Callback) return Unit_Result.Result
+     (Region : String) return Search_Results_Result.Result
    is
-      --  Wrapper callback to convert TZif Zone_Name_String to Domain Zone_ID
-      procedure Callback_Wrapper
-        (Name : TZif.Find_Region_Port.Zone_Name_String)
+      use Domain.Value_Object.Zone_ID;
+
+      --  Accumulator state for callback collection
+      Count    : Natural := 0;
+      Overflow : Boolean := False;
+      Results  : Search_Results (Count => Max_Search_Results);
+
+      --  Callback to collect zones into bounded array
+      procedure Collect_Zone (Name : TZif.Find_Region_Port.Zone_Name_String)
       is
          Zone_Str : constant String :=
            TZif.Find_Region_Port.Zone_Name_Strings.To_String (Name);
       begin
-         Yield (Domain.Value_Object.Zone_ID.Make_Zone_ID (Zone_Str));
-      end Callback_Wrapper;
+         if Count >= Max_Search_Results then
+            Overflow := True;
+         else
+            Count := Count + 1;
+            Results.Items (Count) := Make_Zone_ID (Zone_Str);
+         end if;
+      end Collect_Zone;
 
       TZif_Region : constant TZif.Region_String :=
         TZif.Find_Region_Port.Region_Strings.To_Bounded_String (Region);
@@ -380,52 +435,86 @@ package body Infrastructure.Adapter.Discovery is
    begin
       TZif_Result :=
         TZif.Find_By_Region
-          (TZif_Region, Callback_Wrapper'Unrestricted_Access);
-      if TZif.Find_Region_Port.Find_By_Region_Result_Package.Is_Ok
-           (TZif_Result)
+          (TZif_Region, Collect_Zone'Unrestricted_Access);
+
+      if not TZif.Find_Region_Port.Find_By_Region_Result_Package.Is_Ok
+               (TZif_Result)
       then
-         return Unit_Result.Ok (Domain.Unit.Unit_Value);
-      else
          declare
             Err : constant TZif_Err.Error_Type :=
               TZif.Find_Region_Port.Find_By_Region_Result_Package.Error_Info
                 (TZif_Result);
          begin
-            return Unit_Result.From_Error (To_Domain_Error (Err));
+            return Search_Results_Result.From_Error (To_Domain_Error (Err));
          end;
       end if;
+
+      if Overflow then
+         return
+           Search_Results_Result.Error
+             (Domain.Error.Overflow_Error,
+              "Region '" & Region &
+              "' matched more than Max_Search_Results" &
+              Max_Search_Results'Image &
+              "; refine query or increase Zoneinfo_Config.Max_Search_Results");
+      end if;
+
+      return Search_Results_Result.Ok ((Count => Count, Items => Results.Items));
    end Find_By_Region;
 
    function Find_By_Regex
-     (Regex : String;
-      Yield : Zone_Callback) return Unit_Result.Result
+     (Regex : String) return Search_Results_Result.Result
    is
-      --  Wrapper callback to convert TZif Zone_Name_String to Domain Zone_ID
-      procedure Callback_Wrapper
-        (Name : TZif.Find_Regex_Port.Zone_Name_String)
+      use Domain.Value_Object.Zone_ID;
+
+      --  Accumulator state for callback collection
+      Count    : Natural := 0;
+      Overflow : Boolean := False;
+      Results  : Search_Results (Count => Max_Search_Results);
+
+      --  Callback to collect zones into bounded array
+      procedure Collect_Zone (Name : TZif.Find_Regex_Port.Zone_Name_String)
       is
          Zone_Str : constant String :=
            TZif.Find_Regex_Port.Zone_Name_Strings.To_String (Name);
       begin
-         Yield (Domain.Value_Object.Zone_ID.Make_Zone_ID (Zone_Str));
-      end Callback_Wrapper;
+         if Count >= Max_Search_Results then
+            Overflow := True;
+         else
+            Count := Count + 1;
+            Results.Items (Count) := Make_Zone_ID (Zone_Str);
+         end if;
+      end Collect_Zone;
 
       TZif_Regex  : constant TZif.Regex_String :=
         TZif.Find_Regex_Port.Regex_Strings.To_Bounded_String (Regex);
       TZif_Result : TZif.Regex_Result;
    begin
       TZif_Result :=
-        TZif.Find_By_Regex (TZif_Regex, Callback_Wrapper'Unrestricted_Access);
-      if TZif.Find_Regex_Port.Find_By_Regex_Result_Package.Is_Ok (TZif_Result)
+        TZif.Find_By_Regex (TZif_Regex, Collect_Zone'Unrestricted_Access);
+
+      if not TZif.Find_Regex_Port.Find_By_Regex_Result_Package.Is_Ok
+               (TZif_Result)
       then
-         return Unit_Result.Ok (Domain.Unit.Unit_Value);
-      else
          return
-           Unit_Result.From_Error
+           Search_Results_Result.From_Error
              (To_Domain_Error
                 (TZif.Find_Regex_Port.Find_By_Regex_Result_Package.Error_Info
                    (TZif_Result)));
       end if;
+
+      if Overflow then
+         return
+           Search_Results_Result.Error
+             (Domain.Error.Overflow_Error,
+              "Regex '" & Regex &
+              "' matched more than Max_Search_Results" &
+              Max_Search_Results'Image &
+              "; refine pattern or increase Zoneinfo_Config.Max_Search_Results"
+             );
+      end if;
+
+      return Search_Results_Result.Ok ((Count => Count, Items => Results.Items));
    end Find_By_Regex;
 
 end Infrastructure.Adapter.Discovery;

@@ -41,7 +41,7 @@ with Domain.Error.Result;
 with Zoneinfo_Config;
 
 package Domain.Value_Object.Zone_ID
-  with Preelaborate
+  with Preelaborate, SPARK_Mode => On
 is
    --  ========================================================================
    --  String Type
@@ -138,5 +138,43 @@ is
    --  Check if Zone_ID has valid format (non-empty, bounded)
    function Is_Valid (Self : Zone_ID) return Boolean
    with Inline;
+
+   --  ========================================================================
+   --  Bounded Array Types for Zone Lists
+   --  ========================================================================
+
+   --  Maximum capacity for full zone listing (e.g., List_All_Zones)
+   Max_Zone_List_Size : constant := Zoneinfo_Config.Max_Zone_List_Size;
+
+   --  Maximum capacity for search results (e.g., Find_By_Pattern)
+   Max_Search_Results : constant := Zoneinfo_Config.Max_Search_Results;
+
+   --  Array index types
+   subtype Zone_List_Index is Positive range 1 .. Max_Zone_List_Size;
+   subtype Search_Result_Index is Positive range 1 .. Max_Search_Results;
+
+   --  Bounded array for full zone listing
+   type Zone_List_Array is array (Zone_List_Index range <>) of Zone_ID;
+
+   --  Bounded array for search results
+   type Search_Result_Array is array (Search_Result_Index range <>) of Zone_ID;
+
+   --  Container types with fixed-size arrays
+   --  Count indicates how many elements are valid (1..Count)
+   type Zone_List (Count : Natural := 0) is record
+      Items : Zone_List_Array (1 .. Zone_List_Index'Last);
+   end record
+   with Dynamic_Predicate => Count <= Max_Zone_List_Size;
+
+   type Search_Results (Count : Natural := 0) is record
+      Items : Search_Result_Array (1 .. Search_Result_Index'Last);
+   end record
+   with Dynamic_Predicate => Count <= Max_Search_Results;
+
+   --  Result types for zone list operations
+   package Zone_List_Result is new
+     Domain.Error.Result.Generic_Result (T => Zone_List);
+   package Search_Results_Result is new
+     Domain.Error.Result.Generic_Result (T => Search_Results);
 
 end Domain.Value_Object.Zone_ID;

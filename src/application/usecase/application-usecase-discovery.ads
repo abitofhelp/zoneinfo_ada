@@ -14,6 +14,7 @@ pragma Ada_2022;
 --    - Static dispatch: No runtime overhead for port calls
 --    - Testable: Instantiate with mock adapters for deterministic tests
 --    - Uses DOMAIN TYPES throughout - no TZif type leakage
+--    - SPARK-compatible: Returns bounded arrays, no access types
 --
 --  Usage:
 --    --  In API.Discovery (composition root):
@@ -28,7 +29,7 @@ pragma Ada_2022;
 --  See Also:
 --    Infrastructure.Adapter.Discovery - Production discovery adapter
 --    Domain.Value_Object.Source_Info - Source_Info type
---    Domain.Value_Object.Zone_ID - Zone_ID type
+--    Domain.Value_Object.Zone_ID - Zone_ID type and bounded array types
 --  ===========================================================================
 
 with Domain.Value_Object.Source_Info;
@@ -46,10 +47,6 @@ generic
      (T => Domain.Value_Object.Source_Info.Source_Info);
    with package Version_Result is new Domain.Error.Result.Generic_Result
      (T => Domain.Value_Object.Source_Info.Version_String);
-
-   --  Zone callback type for iteration
-   type Zone_Callback is access procedure
-     (Zone : Domain.Value_Object.Zone_ID.Zone_ID);
 
    --  Source Management Operations
    with function Port_Discover_Sources
@@ -70,25 +67,23 @@ generic
       return Version_Result.Result;
    with function Port_List_All_Zones
      (Source     : Domain.Value_Object.Source_Info.Source_Info;
-      Yield      : Zone_Callback;
       Descending : Boolean := False)
-      return Domain.Error.Unit_Result.Result;
+      return Domain.Value_Object.Zone_ID.Zone_List_Result.Result;
 
-   --  Pattern-Based Search Operations
+   --  Pattern-Based Search Operations (return bounded arrays)
    with function Port_Find_By_Pattern
-     (Pattern : String;
-      Yield   : Zone_Callback)
-      return Domain.Error.Unit_Result.Result;
+     (Pattern : String)
+      return Domain.Value_Object.Zone_ID.Search_Results_Result.Result;
    with function Port_Find_By_Region
-     (Region : String;
-      Yield  : Zone_Callback)
-      return Domain.Error.Unit_Result.Result;
+     (Region : String)
+      return Domain.Value_Object.Zone_ID.Search_Results_Result.Result;
    with function Port_Find_By_Regex
-     (Regex : String;
-      Yield : Zone_Callback)
-      return Domain.Error.Unit_Result.Result;
+     (Regex : String)
+      return Domain.Value_Object.Zone_ID.Search_Results_Result.Result;
 
-package Application.Usecase.Discovery is
+package Application.Usecase.Discovery
+  with Preelaborate, SPARK_Mode => On
+is
 
    --  ========================================================================
    --  Re-export Domain Types for convenience
@@ -99,11 +94,17 @@ package Application.Usecase.Discovery is
    subtype Path_List is Domain.Value_Object.Source_Info.Path_List;
    subtype Version_String is Domain.Value_Object.Source_Info.Version_String;
    subtype Zone_ID is Domain.Value_Object.Zone_ID.Zone_ID;
+   subtype Zone_List is Domain.Value_Object.Zone_ID.Zone_List;
+   subtype Search_Results is Domain.Value_Object.Zone_ID.Search_Results;
 
    package Path_Strings renames Domain.Value_Object.Source_Info.Path_Strings;
    package Version_Strings renames
      Domain.Value_Object.Source_Info.Version_Strings;
    package Zone_ID_Result renames Domain.Value_Object.Zone_ID.Zone_ID_Result;
+   package Zone_List_Result renames
+     Domain.Value_Object.Zone_ID.Zone_List_Result;
+   package Search_Results_Result renames
+     Domain.Value_Object.Zone_ID.Search_Results_Result;
    package Unit_Result renames Domain.Error.Unit_Result;
 
    --  ========================================================================
@@ -137,29 +138,29 @@ package Application.Usecase.Discovery is
      (Source : Source_Info) return Version_Result.Result;
 
    --  List all available timezone IDs from a source.
+   --  Returns bounded Zone_List or Overflow_Error if exceeds capacity.
    function List_All_Zones
      (Source     : Source_Info;
-      Yield      : Zone_Callback;
-      Descending : Boolean := False) return Unit_Result.Result;
+      Descending : Boolean := False) return Zone_List_Result.Result;
 
    --  ========================================================================
    --  Pattern-Based Search Operations
    --  ========================================================================
 
    --  Find zones matching a substring pattern.
+   --  Returns bounded Search_Results or Overflow_Error if exceeds capacity.
    function Find_By_Pattern
-     (Pattern : String;
-      Yield   : Zone_Callback) return Unit_Result.Result;
+     (Pattern : String) return Search_Results_Result.Result;
 
    --  Find zones in a geographic region.
+   --  Returns bounded Search_Results or Overflow_Error if exceeds capacity.
    function Find_By_Region
-     (Region : String;
-      Yield  : Zone_Callback) return Unit_Result.Result;
+     (Region : String) return Search_Results_Result.Result;
 
    --  Find zones matching a regular expression.
+   --  Returns bounded Search_Results or Overflow_Error if exceeds capacity.
    function Find_By_Regex
-     (Regex : String;
-      Yield : Zone_Callback) return Unit_Result.Result;
+     (Regex : String) return Search_Results_Result.Result;
 
    --  ========================================================================
    --  Convenience Functions

@@ -20,7 +20,7 @@ pragma Ada_2022;
 --  =========================================================================
 
 package Domain.Value_Object
-  with Pure
+  with Pure, SPARK_Mode => On
 is
 
 end Domain.Value_Object;

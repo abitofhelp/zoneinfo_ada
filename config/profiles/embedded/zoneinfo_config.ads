@@ -73,4 +73,28 @@ package Zoneinfo_Config is
    --  Embedded profile: 10 paths
    Max_Search_Paths : constant := 10;
 
+   --  Maximum zones returned by List_All_Zones
+   --  Embedded apps typically use limited set of zones
+   Max_Zone_List_Size : constant := 50;
+
+   --  Maximum zones returned by Find_By_* search operations
+   --  Embedded profile: smaller result sets
+   Max_Search_Results : constant := 20;
+
+   --  =======================================================================
+   --  Memory Planning Constants
+   --  =======================================================================
+
+   --  Bounded string overhead (length field + alignment, platform estimate)
+   Bounded_String_Overhead : constant := 8;
+
+   --  Bytes per Zone_ID (for memory planning)
+   Zone_ID_Size_Bytes : constant := Max_Zone_ID_Length + Bounded_String_Overhead;
+
+   --  Memory estimates (bytes)
+   Zone_List_Memory_Bytes : constant :=
+     Max_Zone_List_Size * Zone_ID_Size_Bytes;  --  ~3.6KB
+   Search_Results_Memory_Bytes : constant :=
+     Max_Search_Results * Zone_ID_Size_Bytes;  --  ~1.4KB
+
 end Zoneinfo_Config;

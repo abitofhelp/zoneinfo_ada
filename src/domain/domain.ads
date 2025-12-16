@@ -13,7 +13,7 @@ pragma Ada_2022;
 --  =========================================================================
 
 package Domain
-  with Pure
+  with Pure, SPARK_Mode => On
 is
 
 end Domain;

@@ -45,7 +45,7 @@ with Domain.Value_Object.Zone_ID;
 with Domain.Value_Object.Duration_Type;
 
 package Application.Port.Outbound.Timezone
-  with Preelaborate
+  with Preelaborate, SPARK_Mode => On
 is
    --  ========================================================================
    --  Type Re-exports for Implementations

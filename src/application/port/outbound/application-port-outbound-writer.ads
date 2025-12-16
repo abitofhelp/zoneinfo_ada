@@ -34,7 +34,7 @@ with Domain.Error.Result;
 with Domain.Unit;
 
 package Application.Port.Outbound.Writer
-  with Preelaborate
+  with Preelaborate, SPARK_Mode => On
 is
 
    --  Instantiate Result[Unit] for write operations

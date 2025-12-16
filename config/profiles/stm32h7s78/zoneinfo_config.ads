@@ -76,4 +76,28 @@ package Zoneinfo_Config is
    --  STM32H7S78 profile: 20 paths
    Max_Search_Paths : constant := 20;
 
+   --  Maximum zones returned by List_All_Zones
+   --  STM32H7S78: external PSRAM allows moderate capacity
+   Max_Zone_List_Size : constant := 100;
+
+   --  Maximum zones returned by Find_By_* search operations
+   --  STM32H7S78 profile: moderate result sets
+   Max_Search_Results : constant := 30;
+
+   --  =======================================================================
+   --  Memory Planning Constants
+   --  =======================================================================
+
+   --  Bounded string overhead (length field + alignment, platform estimate)
+   Bounded_String_Overhead : constant := 8;
+
+   --  Bytes per Zone_ID (for memory planning)
+   Zone_ID_Size_Bytes : constant := Max_Zone_ID_Length + Bounded_String_Overhead;
+
+   --  Memory estimates (bytes)
+   Zone_List_Memory_Bytes : constant :=
+     Max_Zone_List_Size * Zone_ID_Size_Bytes;  --  ~7.2KB
+   Search_Results_Memory_Bytes : constant :=
+     Max_Search_Results * Zone_ID_Size_Bytes;  --  ~2.2KB
+
 end Zoneinfo_Config;
