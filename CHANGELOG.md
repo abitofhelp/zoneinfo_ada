@@ -111,6 +111,15 @@ Initial release of the Zoneinfo timezone-aware datetime library for Ada 2022.
   - Architecture guides
   - Comprehensive API documentation in source files
 
+### Changed
+
+- **Parse helpers** - Refactored to exception-safe implementation using Functional.Option (Preelaborate compatible)
+
+### Fixed
+
+- **Windows CI** - Corrected TZIF_DATA_PATH handling with forward slashes for GitHub Actions
+- **Ada 2022 compliance** - Fixed reserved word conflict (`some` → `New_Some`)
+
 ### Technical Details
 
 - **Test Coverage**: 510 tests (356 unit + 154 integration), all passing
