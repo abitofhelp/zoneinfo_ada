@@ -1,7 +1,7 @@
 # Changelog
 
-**Version:** 1.0.0<br>
-**Date:** 2025-12-15<br>
+**Version:** 1.1.0<br>
+**Date:** 2025-12-16<br>
 **SPDX-License-Identifier:** BSD-3-Clause<br>
 **License File:** See the LICENSE file in the project root<br>
 **Copyright:** © 2025 Michael Gardner, A Bit of Help, Inc.<br>
@@ -12,7 +12,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.1.0] - 2025-12-16
+
+**Tests:** 335 unit + 154 integration = 489 total - All passing<br>
+**SPARK:** Domain + Application layers verified (--mode=check)
 
 ### Added
 
@@ -24,14 +27,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Discovery API** - `List_All_Zones` and `Find_By_*` now return `Result[Zone_List/Search_Results]` instead of using callbacks
 - **SPARK_Mode** - Enabled `SPARK_Mode => On` for all Domain and Application layer specs
 - **Removed Zone_Callback** - Eliminated `access procedure` type for SPARK compatibility
-
-### Deprecated
-
-### Removed
+- **Domain.Error.Result** - Slimmed to 7 essential operations for SPARK compatibility
+  - Kept: `Ok`, `Error`, `From_Error`, `Is_Ok`, `Is_Error`, `Value`, `Error_Info`
+  - Removed combinators available via `Functional.Result` in infrastructure layer
+- **Dependency** - Updated tzif to ^3.0.2
 
 ### Fixed
 
-### Security
+- **SPARK prover crash** - Eliminated GNAT BUG DETECTED error in Result's Fallback function
+- **Windows CI** - Fixed TZIF_DATA_PATH handling with forward slashes for GitHub Actions
+
+---
 
 ## [1.0.0] - 2025-12-15
 
