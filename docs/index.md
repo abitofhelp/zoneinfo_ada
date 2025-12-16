@@ -40,8 +40,7 @@ Zoneinfo is a timezone-aware datetime library for Ada 2022, providing high-level
 
 ### Developer Guides
 
-- **[Architecture Enforcement](./guides/architecture_enforcement.md)** - Layer dependency rules and DIP compliance
-- **[Build Profiles](./guides/build_profiles.md)** - Multi-platform build configuration
+- **[TZif API Mapping](./guides/tzif_api_mapping.md)** - How Zoneinfo operations map to TZif
 
 ### Reference
 
