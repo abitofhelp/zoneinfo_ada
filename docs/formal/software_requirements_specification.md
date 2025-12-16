@@ -391,7 +391,7 @@ The system SHALL provide formatting and parsing operations.
 | **NFR-08.1** | Unit tests SHALL cover all Domain and Application layer packages |
 | **NFR-08.2** | Integration tests SHALL cover all Infrastructure adapters |
 | **NFR-08.3** | Mock_Clock adapter SHALL enable deterministic testing |
-| **NFR-08.4** | All 510 tests (356 unit + 154 integration) SHALL pass |
+| **NFR-08.4** | All unit and integration tests SHALL pass (see CHANGELOG for current counts) |
 
 ---
 
@@ -442,7 +442,7 @@ Not applicable. Zoneinfo is a library with programmatic API only.
 |-----------|---------|
 | **Result Monad** | Generic_Result for error handling |
 | **Option Monad** | Generic_Option for optional values |
-| **Try Pattern** | Try_To_Result for exception boundary conversion |
+| **Try Pattern** | Map_To_Result for exception boundary conversion |
 
 ### 6.3 Hardware Interfaces
 

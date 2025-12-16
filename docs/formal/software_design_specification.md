@@ -580,35 +580,44 @@ Z2 : constant Zoned := Zoned.With_Zone (Z1, London_Zone);
 
 **Problem**: Infrastructure adapters use Ada standard library (Ada.Calendar, Ada.Text_IO) which raises exceptions.
 
-**Solution**: All Infrastructure operations wrapped in Functional.Try:
+**Solution**: All Infrastructure operations wrapped in Functional.Try.Map_To_Result:
 
 ```ada
 --  From global CLAUDE.md rule:
-with Functional.Try;
+with Functional.Try.Map_To_Result_With_Param;
+with Ada.IO_Exceptions;
 
-function Risky_Action (Param : Param_Type) return T;
+function Risky_Action (Param : Param_Type) return My_Result.Result;
 
-function Map_Exception
-  (Exc : Exception_Occurrence) return Domain.Error.Error_Type;
+function Make_Error (Kind : Error_Kind; Message : String)
+  return My_Result.Result is
+begin
+   return My_Result.Error (Kind, Message);
+end Make_Error;
 
-function Safe_Action is new
-  Functional.Try.Try_To_Result_With_Param
-    (T             => Result_Type,
-     E             => Domain.Error.Error_Type,
-     Param         => Param_Type,
-     Result_Pkg    => My_Result_Package,
-     Map_Exception => Map_Exception,
-     Action        => Risky_Action);
+package Try_Action is new Functional.Try.Map_To_Result_With_Param
+  (Error_Kind_Type    => Domain.Error.Error_Kind,
+   Param_Type         => Param_Type,
+   Result_Type        => My_Result.Result,
+   Make_Error         => Make_Error,
+   Default_Error_Kind => Internal_Error,
+   Action             => Risky_Action);
+
+--  Declarative exception mappings
+Mappings : constant Try_Action.Mapping_Array :=
+  [(Ada.IO_Exceptions.Name_Error'Identity, Not_Found_Error),
+   (Ada.IO_Exceptions.Use_Error'Identity,  IO_Error)];
 
 --  Public API calls safe wrapper
-function Public_Operation (P : Param_Type) return Result is
+function Public_Operation (P : Param_Type) return My_Result.Result is
 begin
-   return Safe_Action (P);
+   return Try_Action.Run (P, Mappings);
 end Public_Operation;
 ```
 
 **Benefits**:
 - NO manual exception handlers in Infrastructure
+- Declarative exception mappings (data, not code)
 - Consistent exception → Domain.Error mapping
 - Auditability (single exception boundary mechanism)
 

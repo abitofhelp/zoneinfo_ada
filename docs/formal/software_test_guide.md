@@ -528,7 +528,7 @@ jobs:
 ```
 
 **CI Requirements**:
-- All 510 tests must pass
+- All unit and integration tests must pass
 - SPARK checks must pass (no errors)
 - Coverage must be ≥90% (validation profile)
 
@@ -557,26 +557,19 @@ jobs:
 | `make coverage` | Generate coverage report |
 | `make clean` | Clean build artifacts |
 
-### Appendix C: Test Count Breakdown
+### Appendix C: Test Coverage
 
-**Unit Tests (356 total)**:
-- Domain.Value_Object.Instant: 34
-- Domain.Value_Object.Zoned: 28
-- Domain.Value_Object.Civil: 42
-- Domain.Value_Object.Duration_Type: 58
-- Domain.Value_Object.Zone_ID: 18
-- Domain.Error.Result: 84
-- Domain.Types.Option: 56
-- API.Format: 24
-- API.Parse: 18
-- Infrastructure.Adapter.Console_Writer: 14
+**Test Categories**:
+- **Unit Tests**: Domain layer value objects, error handling, option types, API format/parse
+- **Integration Tests**: API.Desktop composition, TZif adapter integration, cross-layer epoch conversions
 
-**Integration Tests (154 total)**:
-- API.Desktop (full composition): 72
-- Infrastructure.Adapter.Tzif: 54
-- Epoch conversions (cross-layer): 28
+**Current test counts** are documented in the [CHANGELOG](../../CHANGELOG.md) under each release version. This avoids duplication and ensures the authoritative test metrics are always in the release notes.
 
-**Total: 510 tests**
+**Test Count Query**:
+```bash
+# Get current test counts from actual runners
+make test-all 2>&1 | grep -E "Total tests|GRAND TOTAL"
+```
 
 ### Appendix D: Change History
 
