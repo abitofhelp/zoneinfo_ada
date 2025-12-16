@@ -402,7 +402,8 @@ package body Infrastructure.Adapter.Discovery is
       end if;
 
       --  Return with actual count
-      return Search_Results_Result.Ok ((Count => Count, Items => Results.Items));
+      return Search_Results_Result.Ok
+        ((Count => Count, Items => Results.Items));
    end Find_By_Pattern;
 
    function Find_By_Region
@@ -459,7 +460,8 @@ package body Infrastructure.Adapter.Discovery is
               "; refine query or increase Zoneinfo_Config.Max_Search_Results");
       end if;
 
-      return Search_Results_Result.Ok ((Count => Count, Items => Results.Items));
+      return Search_Results_Result.Ok
+        ((Count => Count, Items => Results.Items));
    end Find_By_Region;
 
    function Find_By_Regex
@@ -514,7 +516,8 @@ package body Infrastructure.Adapter.Discovery is
              );
       end if;
 
-      return Search_Results_Result.Ok ((Count => Count, Items => Results.Items));
+      return Search_Results_Result.Ok
+        ((Count => Count, Items => Results.Items));
    end Find_By_Regex;
 
 end Infrastructure.Adapter.Discovery;

@@ -126,7 +126,7 @@ package Infrastructure.Adapter.Discovery is
      (Source : Source_Info) return Version_Result.Result;
 
    --  List all available timezone IDs from a source.
-   --  Returns bounded Zone_List or Overflow_Error if exceeds Max_Zone_List_Size.
+   --  Returns Zone_List or Overflow_Error if exceeds Max_Zone_List_Size.
    function List_All_Zones
      (Source     : Source_Info;
       Descending : Boolean := False) return Zone_List_Result.Result;

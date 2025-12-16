@@ -14,7 +14,7 @@ pragma Ada_2022;
 --    - COMPOSITION ROOT for Discovery operations
 --    - SPARK_Mode Off: Contains I/O wiring
 --    - Uses DOMAIN TYPES throughout - no TZif type exposure
---    - Provides convenient API for source management and timezone queries
+--    - Returns bounded arrays for zone listings (SPARK-compatible)
 --
 --  DIP Compliance:
 --    - All public types are from Domain layer (Source_Info, Zone_ID, etc.)
@@ -30,6 +30,14 @@ pragma Ada_2022;
 --    Paths (1) := Make_Path ("/usr/share/zoneinfo");
 --    Paths (2) := Make_Path ("/var/db/timezone/zoneinfo");
 --    Result := Discover_Sources (Paths);
+--
+--    --  List all zones
+--    Zones_Result := List_All_Zones (Source);
+--    if Zone_List_Result.Is_Ok (Zones_Result) then
+--       for I in 1 .. Zone_List_Result.Value (Zones_Result).Count loop
+--          Process (Zone_List_Result.Value (Zones_Result).Items (I));
+--       end loop;
+--    end if;
 --
 --  ===========================================================================
 
@@ -52,7 +60,14 @@ package Zoneinfo.API.Discovery is
 
    --  Zone ID types from Domain
    subtype Zone_ID is Domain.Value_Object.Zone_ID.Zone_ID;
+   subtype Zone_List is Domain.Value_Object.Zone_ID.Zone_List;
+   subtype Search_Results is Domain.Value_Object.Zone_ID.Search_Results;
+
    package Zone_ID_Result renames Domain.Value_Object.Zone_ID.Zone_ID_Result;
+   package Zone_List_Result renames
+     Domain.Value_Object.Zone_ID.Zone_List_Result;
+   package Search_Results_Result renames
+     Domain.Value_Object.Zone_ID.Search_Results_Result;
 
    --  Error types from Domain
    subtype Error_Type is Domain.Error.Error_Type;
@@ -75,9 +90,6 @@ package Zoneinfo.API.Discovery is
    package Version_Result renames Adapter.Version_Result;
    package Unit_Result renames Domain.Error.Unit_Result;
 
-   --  Zone callback type for iteration
-   subtype Zone_Callback is Adapter.Zone_Callback;
-
    --  ========================================================================
    --  Convenience Constructors
    --  ========================================================================
@@ -93,7 +105,6 @@ package Zoneinfo.API.Discovery is
    package Discovery_UC is new Application.Usecase.Discovery
      (Source_Info_Result    => Adapter.Source_Info_Result,
       Version_Result        => Adapter.Version_Result,
-      Zone_Callback         => Adapter.Zone_Callback,
       Port_Discover_Sources => Adapter.Discover_Sources,
       Port_Load_Source      => Adapter.Load_Source,
       Port_Validate_Source  => Adapter.Validate_Source,
@@ -142,11 +153,10 @@ package Zoneinfo.API.Discovery is
      renames Discovery_UC.Get_Version;
 
    --  List all available timezone IDs from a source.
-   --  Calls Yield callback for each zone ID.
+   --  Returns bounded Zone_List or Overflow_Error if exceeds capacity.
    function List_All_Zones
      (Source     : Source_Info;
-      Yield      : Zone_Callback;
-      Descending : Boolean := False) return Unit_Result.Result
+      Descending : Boolean := False) return Zone_List_Result.Result
      renames Discovery_UC.List_All_Zones;
 
    --  ========================================================================
@@ -154,26 +164,25 @@ package Zoneinfo.API.Discovery is
    --  ========================================================================
 
    --  Find zones matching a substring pattern.
-   --  Calls Yield callback for each matching zone ID.
+   --  Returns bounded Search_Results or Overflow_Error if exceeds capacity.
    --  Example: Pattern "York" matches "America/New_York"
    function Find_By_Pattern
-     (Pattern : String;
-      Yield   : Zone_Callback) return Unit_Result.Result
+     (Pattern : String) return Search_Results_Result.Result
      renames Discovery_UC.Find_By_Pattern;
 
    --  Find zones in a geographic region.
    --  Region is the first component of the IANA zone ID.
    --  Example: Region "America" matches "America/New_York", "America/Chicago"
+   --  Returns bounded Search_Results or Overflow_Error if exceeds capacity.
    function Find_By_Region
-     (Region : String;
-      Yield  : Zone_Callback) return Unit_Result.Result
+     (Region : String) return Search_Results_Result.Result
      renames Discovery_UC.Find_By_Region;
 
    --  Find zones matching a regular expression.
    --  Uses GNAT.Regpat for pattern matching.
+   --  Returns bounded Search_Results or Overflow_Error if exceeds capacity.
    function Find_By_Regex
-     (Regex : String;
-      Yield : Zone_Callback) return Unit_Result.Result
+     (Regex : String) return Search_Results_Result.Result
      renames Discovery_UC.Find_By_Regex;
 
    --  ========================================================================

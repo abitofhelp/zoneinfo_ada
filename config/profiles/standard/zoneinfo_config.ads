@@ -91,7 +91,8 @@ package Zoneinfo_Config is
    Bounded_String_Overhead : constant := 8;
 
    --  Bytes per Zone_ID (for memory planning)
-   Zone_ID_Size_Bytes : constant := Max_Zone_ID_Length + Bounded_String_Overhead;
+   Zone_ID_Size_Bytes : constant :=
+     Max_Zone_ID_Length + Bounded_String_Overhead;
 
    --  Memory estimates (bytes)
    Zone_List_Memory_Bytes : constant :=
