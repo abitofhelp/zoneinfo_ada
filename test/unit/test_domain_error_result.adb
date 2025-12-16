@@ -304,9 +304,11 @@ begin
       R_Min      : constant Int_Result.Result := Int_Result.Ok (Integer'First);
    begin
       Run_Test ("Value extracts zero", Int_Result.Value (R_Zero) = 0);
-      Run_Test ("Value extracts negative", Int_Result.Value (R_Negative) = -100);
+      Run_Test
+        ("Value extracts negative", Int_Result.Value (R_Negative) = -100);
       Run_Test ("Value extracts max", Int_Result.Value (R_Max) = Integer'Last);
-      Run_Test ("Value extracts min", Int_Result.Value (R_Min) = Integer'First);
+      Run_Test
+        ("Value extracts min", Int_Result.Value (R_Min) = Integer'First);
    end;
 
    --  Print summary

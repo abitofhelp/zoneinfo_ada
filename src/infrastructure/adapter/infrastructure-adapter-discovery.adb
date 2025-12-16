@@ -38,10 +38,6 @@ package body Infrastructure.Adapter.Discovery is
    package TZif_Zone renames Zoneinfo.TZif_Lib.Domain.Value_Object.Zone_Id;
    package TZif_Err renames Zoneinfo.TZif_Lib.Domain.Error;
 
-   --  Import capacity limits from Domain
-   use type Domain.Value_Object.Zone_ID.Zone_List_Index;
-   use type Domain.Value_Object.Zone_ID.Search_Result_Index;
-
    --  ========================================================================
    --  Type Conversion Helpers: Domain → TZif
    --  ========================================================================
