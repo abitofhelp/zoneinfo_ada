@@ -1,6 +1,6 @@
 # Zoneinfo - Timezone-Aware Datetime Library for Ada 2022
 
-[![License](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg)](LICENSE) [![Ada](https://img.shields.io/badge/Ada-2022-blue.svg)](https://ada-lang.io) [![SPARK](https://img.shields.io/badge/SPARK-Checked-yellow.svg)](https://www.adacore.com/about-spark) [![Alire](https://img.shields.io/badge/Alire-2.0+-blue.svg)](https://alire.ada.dev)
+[![License](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg)](LICENSE) [![Ada](https://img.shields.io/badge/Ada-2022-blue.svg)](https://ada-lang.io) [![SPARK](https://img.shields.io/badge/SPARK-Proved-green.svg)](https://www.adacore.com/about-spark) [![Alire](https://img.shields.io/badge/Alire-2.0+-blue.svg)](https://alire.ada.dev)
 
 **Version:** 1.1.0<br>
 **Date:** 2025-12-16<br>
@@ -32,7 +32,7 @@ Zoneinfo is a timezone-aware datetime manipulation library for Ada 2022. Built o
 <table>
 <tr>
 <td width="120"><strong>Status</strong></td>
-<td><img src="https://img.shields.io/badge/SPARK-Checked-yellow.svg" alt="SPARK Checked"></td>
+<td><img src="https://img.shields.io/badge/SPARK-Proved-green.svg" alt="SPARK Proved"></td>
 </tr>
 <tr>
 <td><strong>Scope</strong></td>
@@ -40,7 +40,7 @@ Zoneinfo is a timezone-aware datetime manipulation library for Ada 2022. Built o
 </tr>
 <tr>
 <td><strong>Mode</strong></td>
-<td>gnatprove --mode=check (SPARK legality verified)</td>
+<td>gnatprove --mode=prove --level=2</td>
 </tr>
 <tr>
 <td><strong>Results</strong></td>
@@ -48,7 +48,7 @@ Zoneinfo is a timezone-aware datetime manipulation library for Ada 2022. Built o
 </tr>
 </table>
 
-The **domain and application layers** are formally verified using SPARK Ada legality checks, ensuring:
+The **domain and application layers** are formally verified using SPARK Ada, ensuring:
 
 - **No uninitialized data** - All variables properly initialized before use
 - **Data flow integrity** - No aliasing or information flow violations
