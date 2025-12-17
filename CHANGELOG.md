@@ -1,7 +1,7 @@
 # Changelog
 
-**Version:** 1.1.0<br>
-**Date:** 2025-12-16<br>
+**Version:** 1.1.1<br>
+**Date:** 2025-12-17<br>
 **SPDX-License-Identifier:** BSD-3-Clause<br>
 **License File:** See the LICENSE file in the project root<br>
 **Copyright:** © 2025 Michael Gardner, A Bit of Help, Inc.<br>
@@ -12,10 +12,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2025-12-17
+
+**Tests:** 335 unit + 154 integration = 489 total - All passing<br>
+**SPARK Status:** 710 checks: 60 flow, 596 proved, 54 unproved (~92% proved) (--mode=prove --level=2)<br>
+
+### Changed
+
+- **Dependency** - Updated tzif to ^3.0.3
+
+---
+
 ## [1.1.0] - 2025-12-16
 
 **Tests:** 335 unit + 154 integration = 489 total - All passing<br>
-**SPARK Status:** 710 checks: 60 flow, 596 proved, 54 unproved (--mode=prove --level=2)
+**SPARK Status:** 710 checks: 60 flow, 596 proved, 54 unproved (~92% proved) (--mode=prove --level=2)<br>
 
 ### Added
 
@@ -30,7 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Domain.Error.Result** - Slimmed to 7 essential operations for SPARK compatibility
   - Kept: `Ok`, `Error`, `From_Error`, `Is_Ok`, `Is_Error`, `Value`, `Error_Info`
   - Removed combinators available via `Functional.Result` in infrastructure layer
-- **Dependency** - Updated tzif to ^3.0.0
+- **Dependency** - Requires tzif ^3.0.0
 
 ### Fixed
 
@@ -151,5 +162,6 @@ Initial release of the Zoneinfo timezone-aware datetime library for Ada 2022.
 - **Static Dispatch**: Generic instantiation for zero runtime overhead
 - **Library Standalone**: Explicit Library_Interface for ABI stability
 
+[1.1.1]: https://github.com/abitofhelp/zoneinfo/releases/tag/v1.1.1
 [1.1.0]: https://github.com/abitofhelp/zoneinfo/releases/tag/v1.1.0
 [1.0.0]: https://github.com/abitofhelp/zoneinfo/releases/tag/v1.0.0

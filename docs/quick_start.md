@@ -53,7 +53,7 @@ alr build
 - **Alire** 2.0+ (Ada package manager)
 - **GNAT** 14+ (via Alire toolchain)
 - **Make** (for convenience targets)
-- **TZif Library** ^3.0.0 (automatically fetched by Alire)
+- **TZif Library** ^3.0.3 (automatically fetched by Alire)
 - **Functional Library** ^4.0.0 (automatically fetched by Alire)
 - **IANA Timezone Database** (typically in `/usr/share/zoneinfo` on Unix systems)
 

@@ -1,6 +1,6 @@
 name = "zoneinfo"
 description = "Ada 2022 timezone library for zone calculations and durations"
-version = "1.1.0"
+version = "1.1.1"
 authors = ["Michael Gardner"]
 maintainers = ["Michael Gardner <mike@abitofhelp.com>"]
 maintainers-logins = ["abitofhelp"]
@@ -34,7 +34,7 @@ gnatcoll = "^25.0.0"
 functional = "^4.0.0"
 
 [[depends-on]]
-tzif = "^3.0.0"
+tzif = "^3.0.3"
 
 [[pins]]
 functional = { path = '../functional' }

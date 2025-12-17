@@ -352,7 +352,7 @@ make submodule-status
 | gnat | >=13 | Ada 2022 compiler |
 | gnatcoll | ^25.0.0 | GNAT components collection |
 | functional | ^4.0.0 | Result monad and functional patterns |
-| tzif | ^3.0.0 | IANA timezone database access |
+| tzif | ^3.0.3 | IANA timezone database access |
 
 ## Contributing
 
@@ -391,7 +391,7 @@ https://github.com/abitofhelp
 - ISO 8601 parsing and formatting
 - Timezone discovery with bounded arrays (SPARK-compatible)
 - Duration arithmetic and comparisons
-- TZif library integration (v3.0.0)
+- TZif library integration (v3.0.3)
 - 4-layer hexagonal architecture
 - Full test suite (489 tests)
 - Comprehensive documentation

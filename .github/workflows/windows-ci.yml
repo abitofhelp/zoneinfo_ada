@@ -58,9 +58,9 @@ jobs:
         shell: bash
         run: |
           # Replace local path pins with GitHub URL pins
-          # functional v4.0.0, tzif v3.0.0
+          # functional v4.0.0, tzif v3.0.3
           sed -i "s|functional = { path = '../functional' }|functional = { url = \"https://github.com/abitofhelp/functional.git\", commit = \"d429ad4534d3d19e76f6cf19b0f96fa008925658\" }|" alire.toml
-          sed -i "s|tzif = { path = '../tzif' }|tzif = { url = \"https://github.com/abitofhelp/tzif_ada.git\", commit = \"ae94a8870d31a673b2e7f0fb1fbca878fdb94551\" }|" alire.toml
+          sed -i "s|tzif = { path = '../tzif' }|tzif = { url = \"https://github.com/abitofhelp/tzif_ada.git\", commit = \"e2a782a787a7351ac8776749288ed34d91c5abad\" }|" alire.toml
           echo "Updated pins to use GitHub URLs"
           echo "=== alire.toml pins ==="
           grep -A5 '^\[\[pins\]\]' alire.toml || true

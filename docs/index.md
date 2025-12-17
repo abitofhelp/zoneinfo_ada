@@ -222,7 +222,7 @@ From_Error (E)  -- Convert Error_Type to Result
 | Crate | Version | Purpose |
 |-------|---------|---------|
 | **functional** | ^4.0.0 | Result/Option/Try monads |
-| **tzif** | ^3.0.0 | IANA timezone database access |
+| **tzif** | ^3.0.3 | IANA timezone database access |
 | **gnatcoll** | ^25.0.0 | GNAT Components Collection |
 
 **Compiler:** GNAT 14+ (Ada 2022)
