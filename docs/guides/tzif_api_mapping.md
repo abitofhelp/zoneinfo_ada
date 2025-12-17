@@ -1,7 +1,7 @@
 # TZif API Mapping Guide
 
-**Version:** 1.0.0
-**Date:** 2025-12-15
+**Version:** 1.1.0<br>
+**Date:** 2025-12-16<br>
 **SPDX-License-Identifier:** BSD-3-Clause<br>
 **License File:** See the LICENSE file in the project root<br>
 **Copyright:** © 2025 Michael Gardner, A Bit of Help, Inc.<br>

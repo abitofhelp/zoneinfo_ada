@@ -26,11 +26,13 @@ pragma Ada_2022;
 --    - Build metadata: +build.N, +commit.HASH
 --  =========================================================================
 
-package Zoneinfo.Version is
+package Zoneinfo.Version
+  with Preelaborate, SPARK_Mode => On
+is
 
    --  Semantic Version Components
    Major : constant Natural := 1;
-   Minor : constant Natural := 0;
+   Minor : constant Natural := 1;
    Patch : constant Natural := 0;
 
    --  Pre-release identifier (e.g., "dev", "alpha.1", "beta.2", "rc.1")
@@ -42,7 +44,7 @@ package Zoneinfo.Version is
    Build_Metadata : constant String := "";
 
    --  Full version string (e.g., "0.1.0-dev", "1.2.3", "2.0.0-rc.1+build.456")
-   Version : constant String := "1.0.0";
+   Version : constant String := "1.1.0";
 
    --  Check if this is a pre-release version
    function Is_Prerelease return Boolean is (Prerelease'Length > 0);
