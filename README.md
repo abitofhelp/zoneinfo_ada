@@ -11,7 +11,7 @@
 
 ## Overview
 
-Zoneinfo is a timezone-aware datetime manipulation library for Ada 2022. Built on the TZif library, it provides a clean, type-safe API for working with timezones, parsing ISO 8601 strings, formatting datetimes, and discovering timezone sources. The library follows **hybrid DDD/Clean/Hexagonal architecture** with functional error handling and is designed for both desktop and embedded platforms.
+Zoneinfo is a timezone-aware datetime manipulation library for Ada 2022. Built on the TZif library for IANA database access, it provides a clean, type-safe API for working with timezones, parsing ISO 8601 strings, formatting datetimes, and discovering timezone sources. The library follows **hybrid DDD/Clean/Hexagonal architecture** with functional error handling and is designed for both desktop and embedded platforms.
 
 ## Features
 
