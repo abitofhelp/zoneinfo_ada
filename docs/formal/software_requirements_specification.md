@@ -62,7 +62,7 @@ The library builds upon the tzif library for timezone data queries and DST calcu
 | Crate | Version | Purpose |
 |-------|---------|---------|
 | **functional** | ^4.0.0 | Result and Option monads for error handling |
-| **tzif** | ^3.0.2 | Timezone data queries and DST calculations |
+| **tzif** | ^3.0.0 | Timezone data queries and DST calculations |
 | **gnatcoll** | ^25.0.0 | Utility library for string operations |
 
 ---

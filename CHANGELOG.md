@@ -30,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Domain.Error.Result** - Slimmed to 7 essential operations for SPARK compatibility
   - Kept: `Ok`, `Error`, `From_Error`, `Is_Ok`, `Is_Error`, `Value`, `Error_Info`
   - Removed combinators available via `Functional.Result` in infrastructure layer
-- **Dependency** - Updated tzif to ^3.0.2
+- **Dependency** - Updated tzif to ^3.0.0
 
 ### Fixed
 
