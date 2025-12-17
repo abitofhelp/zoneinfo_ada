@@ -1,7 +1,7 @@
 # Changelog
 
 **Version:** 1.1.1<br>
-**Date:** 2025-12-17<br>
+**Date:** 2025-12-16<br>
 **SPDX-License-Identifier:** BSD-3-Clause<br>
 **License File:** See the LICENSE file in the project root<br>
 **Copyright:** © 2025 Michael Gardner, A Bit of Help, Inc.<br>
@@ -13,6 +13,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [1.1.1] - 2025-12-17
+
+**Test Coverage:** 335 unit + 154 integration + 0 examples = 489 total
 
 **Tests:** 335 unit + 154 integration = 489 total - All passing<br>
 **SPARK Status:** 710 checks: 60 flow, 596 proved, 54 unproved (~92% proved) (--mode=prove --level=2)<br>

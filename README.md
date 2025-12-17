@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg)](LICENSE) [![Ada](https://img.shields.io/badge/Ada-2022-blue.svg)](https://ada-lang.io) [![SPARK](https://img.shields.io/badge/SPARK-Proved-green.svg)](https://www.adacore.com/about-spark) [![Alire](https://img.shields.io/badge/Alire-2.0+-blue.svg)](https://alire.ada.dev)
 
-**Version:** 1.1.0<br>
+**Version:** 1.1.1<br>
 **Date:** 2025-12-16<br>
 **SPDX-License-Identifier:** BSD-3-Clause<br>
 **License File:** See the LICENSE file in the project root<br>
@@ -132,7 +132,7 @@ Add to your `alire.toml`:
 
 ```toml
 [[depends-on]]
-zoneinfo = "^1.1.0"
+zoneinfo = "^1.1.1"
 ```
 
 In your Ada code:
@@ -385,7 +385,7 @@ https://github.com/abitofhelp
 
 ## Project Status
 
-**Status**: Released (v1.1.0)
+**Status**: Released (v1.1.1)
 
 - Core timezone-aware datetime types (Instant, Zoned, Civil)
 - ISO 8601 parsing and formatting
