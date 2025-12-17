@@ -60,8 +60,6 @@ pragma Restrictions (No_Coextensions);
 
 package Zoneinfo with Pure is
 
-   --  Library version information
-   --  Note: Actual version is in Zoneinfo.Version package
-   Lib_Version : constant String := "1.0.0";
+   --  Library version information is in Zoneinfo.Version package
 
 end Zoneinfo;
