@@ -1,6 +1,6 @@
 name = "zoneinfo"
 description = "Ada 2022 timezone library for zone calculations and durations"
-version = "1.0.0"
+version = "1.1.0"
 authors = ["Michael Gardner"]
 maintainers = ["Michael Gardner <mike@abitofhelp.com>"]
 maintainers-logins = ["abitofhelp"]

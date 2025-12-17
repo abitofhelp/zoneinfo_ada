@@ -2,11 +2,11 @@
 
 [![License](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg)](LICENSE) [![Ada](https://img.shields.io/badge/Ada-2022-blue.svg)](https://ada-lang.io) [![SPARK](https://img.shields.io/badge/SPARK-Checked-yellow.svg)](https://www.adacore.com/about-spark) [![Alire](https://img.shields.io/badge/Alire-2.0+-blue.svg)](https://alire.ada.dev)
 
-**Version:** 1.0.0<br>
-**Date:** 2025-12-15<br>
+**Version:** 1.1.0<br>
+**Date:** 2025-12-16<br>
 **SPDX-License-Identifier:** BSD-3-Clause<br>
 **License File:** See the LICENSE file in the project root<br>
-**Copyright:** © 2025 Michael Gardner, A Bit of Help, Inc.<br>
+**Copyright:** (c) 2025 Michael Gardner, A Bit of Help, Inc.<br>
 **Status:** Released
 
 ## Overview
@@ -15,16 +15,17 @@ Zoneinfo is a timezone-aware datetime manipulation library for Ada 2022. Built o
 
 ## Features
 
-- ✅ **Timezone-Aware Datetimes** - Instant, Zoned, and Civil time representations
-- ✅ **ISO 8601 Parsing** - Parse datetime strings with timezone offsets and zone IDs
-- ✅ **Datetime Formatting** - Format datetimes as ISO 8601 or custom patterns
-- ✅ **Timezone Discovery** - Find system timezone, search by pattern/region/regex
-- ✅ **Duration Arithmetic** - Add/subtract durations, calculate differences
-- ✅ **TZif Integration** - Built on the TZif library for IANA timezone database access
-- ✅ **Result Monad Error Handling** - No exceptions, functional error handling
-- ✅ **4-Layer Hexagonal Architecture** - Domain → Application → Infrastructure → API
-- ✅ **Embedded Safety** - No implicit heap allocations, static dispatch
-- ✅ **Library Standalone** - Explicit Library_Interface for ABI stability
+- **Timezone-Aware Datetimes** - Instant, Zoned, and Civil time representations
+- **ISO 8601 Parsing** - Parse datetime strings with timezone offsets and zone IDs
+- **Datetime Formatting** - Format datetimes as ISO 8601 or custom patterns
+- **Timezone Discovery** - Find system timezone, search by pattern/region/regex (bounded arrays)
+- **Duration Arithmetic** - Add/subtract durations, calculate differences
+- **TZif Integration** - Built on the TZif library for IANA timezone database access
+- **Result Monad Error Handling** - No exceptions, functional error handling
+- **4-Layer Hexagonal Architecture** - Domain -> Application -> Infrastructure -> API
+- **SPARK Verified** - Domain + Application layers formally verified
+- **Embedded Safety** - No implicit heap allocations, bounded types, static dispatch
+- **Library Standalone** - Explicit Library_Interface for ABI stability
 
 ## SPARK Formal Verification
 
@@ -66,7 +67,7 @@ make spark-prove    # Run full SPARK proof verification
 
 | Layer | SPARK_Mode | Description |
 |-------|-----------|-------------|
-| Domain | On | Value objects (Instant, Zoned, Civil, Duration, Zone_ID) |
+| Domain | On | Value objects (Instant, Zoned, Civil, Duration, Zone_ID), 7-operation Result |
 | Application | On | Use cases and ports |
 | Infrastructure | Off | I/O operations, TZif adapters |
 | API | Off | Facade over infrastructure |
@@ -91,22 +92,23 @@ git submodule update --init --recursive
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                      Zoneinfo.API                           │
-│              (Public Facade - Stable Interface)             │
-├─────────────────────────────────────────────────────────────┤
-│  API.Operations  │  API.Parse  │  API.Format  │ API.Discovery│
-│  (Pure ops)      │  (ISO 8601) │  (Display)   │ (TZ sources) │
-├─────────────────────────────────────────────────────────────┤
-│                    Application Layer                        │
-│         Use Cases  │  Ports (Timezone)  │  Commands         │
-├─────────────────────────────────────────────────────────────┤
-│                   Infrastructure Layer                      │
-│         Adapters (TZif Integration, Discovery)              │
-├─────────────────────────────────────────────────────────────┤
-│                      Domain Layer                           │
-│  Instant │ Zoned │ Civil │ Duration │ Zone_ID │ Source_Info │
-└─────────────────────────────────────────────────────────────┘
++-------------------------------------------------------------+
+|                      Zoneinfo.API                           |
+|              (Public Facade - Stable Interface)             |
++-------------------------------------------------------------+
+|  API.Operations  |  API.Parse  |  API.Format  | API.Discovery|
+|  (Pure ops)      |  (ISO 8601) |  (Display)   | (TZ sources) |
++-------------------------------------------------------------+
+|                    Application Layer                        |
+|         Use Cases  |  Ports (Timezone)  |  Commands         |
++-------------------------------------------------------------+
+|                   Infrastructure Layer                      |
+|         Adapters (TZif Integration, Discovery)              |
++-------------------------------------------------------------+
+|                      Domain Layer                           |
+|  Instant | Zoned | Civil | Duration | Zone_ID | Source_Info |
+|  Zone_List | Search_Results | 7-operation Result            |
++-------------------------------------------------------------+
 ```
 
 ## Quick Start
@@ -130,7 +132,7 @@ Add to your `alire.toml`:
 
 ```toml
 [[depends-on]]
-zoneinfo = "^1.0.0"
+zoneinfo = "^1.1.0"
 ```
 
 In your Ada code:
@@ -156,7 +158,7 @@ procedure Main is
 
    --  Format datetime
    Formatted : constant String :=
-     Format.To_ISO_8601 (Some_Civil_Time);
+     Format.To_String (Format.To_ISO_8601 (Some_Civil_Time));
 begin
    if Civil_Result.Is_Ok (Parse_Result) then
       --  Success! Use the parsed Civil time
@@ -186,14 +188,17 @@ Now : constant Instant := Instant_Pkg.From_Epoch_Nanos (1700000000);
 Zoned_Time : constant Zoned := Zoned_Pkg.Create (Now, Zone);
 
 --  Change timezone (preserves instant)
---  Note: From_String returns Result, so handle errors in production code
 NY_Result : constant Zone_ID_Result.Result :=
   Zone_ID_Pkg.From_String ("America/New_York");
-NY_Zone : Zone_ID;
 
 if Zone_ID_Result.Is_Ok (NY_Result) then
-   NY_Zone := Zone_ID_Result.Value (NY_Result);
-   NY_Time := Zoned_Pkg.With_Zone (Zoned_Time, NY_Zone);
+   declare
+      NY_Zone : constant Zone_ID := Zone_ID_Result.Value (NY_Result);
+      NY_Time : constant Zoned := Zoned_Pkg.With_Zone (Zoned_Time, NY_Zone);
+   begin
+      --  NY_Time has same instant, different timezone context
+      null;
+   end;
 end if;
 ```
 
@@ -233,7 +238,7 @@ With_Offset : constant Format.Datetime_String :=
   Format.To_ISO_8601_With_Offset (Civil_Time, UTC_Offset);
 ```
 
-### Timezone Discovery
+### Timezone Discovery (v1.1.0 Bounded Arrays)
 
 ```ada
 with Zoneinfo.API.Discovery;
@@ -247,8 +252,41 @@ Paths (1) := Make_Path ("/usr/share/zoneinfo");
 Source_Result : constant Source_Info_Result.Result :=
   Discovery.Discover_Sources (Paths);
 
---  Search by pattern
-Result := Discovery.Find_By_Pattern ("York", Yield_Callback);
+--  List all zones (returns bounded Zone_List, not callback)
+if Source_Info_Result.Is_Ok (Source_Result) then
+   declare
+      Source : constant Source_Info := Source_Info_Result.Value (Source_Result);
+      Zones_Result : constant Zone_List_Result.Result :=
+        Discovery.List_All_Zones (Source);
+   begin
+      if Zone_List_Result.Is_Ok (Zones_Result) then
+         declare
+            Zones : constant Zone_List := Zone_List_Result.Value (Zones_Result);
+         begin
+            --  Iterate bounded array
+            for I in 1 .. Zones.Count loop
+               Process_Zone (Zones.Items (I));
+            end loop;
+         end;
+      end if;
+   end;
+end if;
+
+--  Search by pattern (returns bounded Search_Results)
+Pattern_Result : constant Search_Results_Result.Result :=
+  Discovery.Find_By_Pattern ("York", Source);
+
+if Search_Results_Result.Is_Ok (Pattern_Result) then
+   declare
+      Results : constant Search_Results :=
+        Search_Results_Result.Value (Pattern_Result);
+   begin
+      for I in 1 .. Results.Count loop
+         --  Each result contains the matching Zone_ID
+         Process_Zone (Results.Items (I));
+      end loop;
+   end;
+end if;
 ```
 
 ## Testing
@@ -267,16 +305,16 @@ make build-tests
 ./test/bin/integration_runner
 ```
 
-**Test Results**: All 510 tests passing (356 unit + 154 integration)
+**Test Results**: All 489 tests passing (335 unit + 154 integration)
 
 ## Documentation
 
-- 📚 **[Documentation Index](docs/index.md)** - Complete documentation overview
-- 🚀 **[Quick Start Guide](docs/quick_start.md)** - Get started in minutes
-- 📖 **[Software Requirements Specification](docs/formal/software_requirements_specification.md)**
-- 🏗️ **[Software Design Specification](docs/formal/software_design_specification.md)**
-- 🧪 **[Software Test Guide](docs/formal/software_test_guide.md)**
-- 📝 **[CHANGELOG](CHANGELOG.md)** - Release history
+- **[Documentation Index](docs/index.md)** - Complete documentation overview
+- **[Quick Start Guide](docs/quick_start.md)** - Get started in minutes
+- **[Software Requirements Specification](docs/formal/software_requirements_specification.md)**
+- **[Software Design Specification](docs/formal/software_design_specification.md)**
+- **[Software Test Guide](docs/formal/software_test_guide.md)**
+- **[CHANGELOG](CHANGELOG.md)** - Release history
 
 ## Code Standards
 
@@ -288,8 +326,9 @@ This project follows:
 
 ## Submodule Management
 
-This project uses git submodules for shared Python tooling:
+This project uses git submodules for shared tooling:
 
+- `docs/common` - Shared documentation templates and guides
 - `scripts/python` - Build, release, and architecture scripts
 - `test/python` - Shared test fixtures and configuration
 
@@ -306,13 +345,22 @@ make submodule-update
 make submodule-status
 ```
 
+## Dependencies
+
+| Dependency | Version | Purpose |
+|------------|---------|---------|
+| gnat | >=13 | Ada 2022 compiler |
+| gnatcoll | ^25.0.0 | GNAT components collection |
+| functional | ^4.0.0 | Result monad and functional patterns |
+| tzif | ^3.0.2 | IANA timezone database access |
+
 ## Contributing
 
 This project is not open to external contributions at this time.
 
 ## AI Assistance & Authorship
 
-This project — including its source code, tests, documentation, and other deliverables — is designed, implemented, and maintained by human developers, with Michael Gardner as the Principal Software Engineer and project lead.
+This project - including its source code, tests, documentation, and other deliverables - is designed, implemented, and maintained by human developers, with Michael Gardner as the Principal Software Engineer and project lead.
 
 We use AI coding assistants (such as OpenAI GPT models and Anthropic Claude Code) as part of the development workflow to help with:
 
@@ -325,7 +373,7 @@ AI systems are treated as tools, not authors. All changes are reviewed, adapted,
 
 ## License
 
-Copyright © 2025 Michael Gardner, A Bit of Help, Inc.
+Copyright (c) 2025 Michael Gardner, A Bit of Help, Inc.
 
 Licensed under the BSD-3-Clause License. See [LICENSE](LICENSE) for details.
 
@@ -337,15 +385,15 @@ https://github.com/abitofhelp
 
 ## Project Status
 
-**Status**: Released (v1.0.0)
+**Status**: Released (v1.1.0)
 
-- ✅ Core timezone-aware datetime types (Instant, Zoned, Civil)
-- ✅ ISO 8601 parsing and formatting
-- ✅ Timezone discovery and search operations
-- ✅ Duration arithmetic and comparisons
-- ✅ TZif library integration
-- ✅ 4-layer hexagonal architecture
-- ✅ Full test suite (510 tests)
-- ✅ Comprehensive documentation
-- ✅ SPARK legality verification for Domain + Application layers
-- ✅ Alire publication
+- Core timezone-aware datetime types (Instant, Zoned, Civil)
+- ISO 8601 parsing and formatting
+- Timezone discovery with bounded arrays (SPARK-compatible)
+- Duration arithmetic and comparisons
+- TZif library integration (v3.0.2)
+- 4-layer hexagonal architecture
+- Full test suite (489 tests)
+- Comprehensive documentation
+- SPARK legality verification for Domain + Application layers
+- Alire publication

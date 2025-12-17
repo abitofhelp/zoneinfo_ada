@@ -151,4 +151,5 @@ Initial release of the Zoneinfo timezone-aware datetime library for Ada 2022.
 - **Static Dispatch**: Generic instantiation for zero runtime overhead
 - **Library Standalone**: Explicit Library_Interface for ABI stability
 
+[1.1.0]: https://github.com/abitofhelp/zoneinfo/releases/tag/v1.1.0
 [1.0.0]: https://github.com/abitofhelp/zoneinfo/releases/tag/v1.0.0
