@@ -635,7 +635,7 @@ Zone := Zone_ID_Pkg.From_String ("America_New_York");
 
 - **[Software Requirements Specification](formal/software_requirements_specification.md)** - Detailed requirements
 - **[Software Design Specification](formal/software_design_specification.md)** - Architecture details
-- **[Software Test Guide](formal/software_test_guide.md)** - Testing strategy
+- **[Software Test Plan](formal/software_test_plan.md)** - Testing strategy
 
 ### API Reference
 

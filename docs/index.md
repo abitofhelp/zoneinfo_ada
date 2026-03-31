@@ -38,7 +38,7 @@ Zoneinfo is a timezone-aware datetime library for Ada 2022, providing high-level
 
 - **[Software Requirements Specification](./formal/software_requirements_specification.md)** - Functional and non-functional requirements
 - **[Software Design Specification](./formal/software_design_specification.md)** - Architecture, design patterns, and implementation
-- **[Software Test Guide](./formal/software_test_guide.md)** - Test strategy, execution, and writing new tests
+- **[Software Test Plan](./formal/software_test_plan.md)** - Test strategy, execution, and writing new tests
 
 ### Developer Guides
 
@@ -238,7 +238,7 @@ docs/
 ├── formal/
 │   ├── software_requirements_specification.md
 │   ├── software_design_specification.md
-│   └── software_test_guide.md
+│   └── software_test_plan.md
 └── guides/
     └── tzif_api_mapping.md
 ```
@@ -248,7 +248,7 @@ docs/
 ## Need Help?
 
 - **Getting started?** → [Quick Start Guide](./quick_start.md)
-- **Running tests?** → [Software Test Guide](./formal/software_test_guide.md)
+- **Running tests?** → [Software Test Plan](./formal/software_test_plan.md)
 - **Understanding errors?** → [Quick Start: Error Handling](./quick_start.md#error-handling)
 - **Architecture questions?** → [Software Design Specification](./formal/software_design_specification.md)
 

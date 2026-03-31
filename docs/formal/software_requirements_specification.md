@@ -475,7 +475,7 @@ Not applicable. Zoneinfo is a library with programmatic API only.
 
 ### 7.2 Requirements Traceability
 
-See Software Test Guide (STG) Section 8 for complete Requirements → Tests traceability matrix.
+See Software Test Plan (STP) Section 8 for complete Requirements → Tests traceability matrix.
 
 ### 7.3 Test Coverage Goals
 

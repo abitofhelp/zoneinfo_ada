@@ -1,4 +1,4 @@
-# Software Test Guide
+# Software Test Plan
 
 **Version:** 1.1.1<br>
 **Date:** 2025-12-16<br>
@@ -13,7 +13,7 @@
 
 ### 1.1 Purpose
 
-This Software Test Guide (STG) describes the test strategy, organization, and execution procedures for **Zoneinfo**, a timezone-aware datetime manipulation library for Ada 2022.
+This Software Test Plan (STP) describes the test strategy, organization, and execution procedures for **Zoneinfo**, a timezone-aware datetime manipulation library for Ada 2022.
 
 ### 1.2 Scope
 
