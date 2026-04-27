@@ -1,10 +1,11 @@
 # Software Requirements Specification
 
-**Version:** 1.1.1<br>
-**Date:** 2025-12-16<br>
+**Doc Version:** 1.1.1<br>
+**Applies to zoneinfo_ada:** ^1.1<br>
+**Last Updated:** 2026-04-26<br>
 **SPDX-License-Identifier:** BSD-3-Clause<br>
 **License File:** See the LICENSE file in the project root<br>
-**Copyright:** © 2025 Michael Gardner, A Bit of Help, Inc.<br>
+**Copyright:** © 2026 Michael Gardner, A Bit of Help, Inc.<br>
 **Status:** Released
 
 ---
